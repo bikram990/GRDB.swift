@@ -11,16 +11,13 @@
          location = "group:JSONSynchronization.playground">
       </FileRef>
       <FileRef
-         location = "group:Record.playground">
-      </FileRef>
-      <FileRef
          location = "group:TransactionObserver.playground">
       </FileRef>
       <FileRef
          location = "group:Issue156.playground">
       </FileRef>
       <FileRef
-         location = "group:/Users/groue/Documents/git/groue/GRDB.swift/Playgrounds/CustomizedDecodingOfDatabaseRows.playground">
+         location = "group:CustomizedDecodingOfDatabaseRows.playground">
       </FileRef>
       <FileRef
          location = "group:Associations.playground">
@@ -49,9 +46,6 @@
    </FileRef>
    <FileRef
       location = "group:GRDBCustom.xcodeproj">
-   </FileRef>
-   <FileRef
-      location = "group:GRDBCipher.xcodeproj">
    </FileRef>
    <FileRef
       location = "group:Tests/Performance/GRDBProfiling/GRDBProfiling.xcodeproj">

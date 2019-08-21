@@ -1,6 +1,4 @@
-#if GRDBCIPHER
-    import GRDBCipher
-#elseif GRDBCUSTOMSQLITE
+#if GRDBCUSTOMSQLITE
     import GRDBCustomSQLite
 #else
     import GRDB
@@ -42,18 +40,6 @@ private class UserDatabaseAggregate2 : DatabaseAggregate {
     func finalize() throws -> DatabaseValueConvertible? { preconditionFailure() }
 }
 
-// MARK: - DatabaseReader
-
-private class UserDatabaseReader : DatabaseReader {
-    func read<T>(_ block: (Database) throws -> T) throws -> T { preconditionFailure() }
-    func unsafeRead<T>(_ block: (Database) throws -> T) throws -> T { preconditionFailure() }
-    func unsafeReentrantRead<T>(_ block: (Database) throws -> T) throws -> T { preconditionFailure() }
-    func add(function: DatabaseFunction) { }
-    func remove(function: DatabaseFunction) { }
-    func add(collation: DatabaseCollation) { }
-    func remove(collation: DatabaseCollation) { }
-}
-
 // MARK: - DatabaseValueConvertible
 
 private struct UserDatabaseValueConvertible1 : DatabaseValueConvertible {
@@ -64,23 +50,6 @@ private struct UserDatabaseValueConvertible1 : DatabaseValueConvertible {
 private class UserDatabaseValueConvertible2 : DatabaseValueConvertible {
     var databaseValue: DatabaseValue { preconditionFailure() }
     static func fromDatabaseValue(_ dbValue: DatabaseValue) -> Self? { preconditionFailure() }
-}
-
-// MARK: - DatabaseWriter
-
-private class UserDatabaseWriter : DatabaseWriter {
-    func read<T>(_ block: (Database) throws -> T) throws -> T { preconditionFailure() }
-    func unsafeRead<T>(_ block: (Database) throws -> T) throws -> T { preconditionFailure() }
-    func unsafeReentrantRead<T>(_ block: (Database) throws -> T) throws -> T { preconditionFailure() }
-    func add(function: DatabaseFunction) { }
-    func remove(function: DatabaseFunction) { }
-    func add(collation: DatabaseCollation) { }
-    func remove(collation: DatabaseCollation) { }
-    func write<T>(_ block: (Database) throws -> T) rethrows -> T { preconditionFailure() }
-    func writeWithoutTransaction<T>(_ block: (Database) throws -> T) rethrows -> T { preconditionFailure() }
-    func unsafeReentrantWrite<T>(_ block: (Database) throws -> T) rethrows -> T { preconditionFailure() }
-    func readFromCurrentState(_ block: @escaping (Database) -> Void) throws { preconditionFailure() }
-    func concurrentRead<T>(_ block: @escaping (Database) throws -> T) -> Future<T> { preconditionFailure() }
 }
 
 // MARK: - FTS5Tokenizer
@@ -141,7 +110,9 @@ private class UserPersistableRecord2 : PersistableRecord {
 private struct UserRowRequest : FetchRequest {
     struct CustomType { }
     typealias RowDecoder = CustomType
-    func prepare(_ db: Database) throws -> (SelectStatement, RowAdapter?) { preconditionFailure() }
+    // TODO: remove when we remove the deprecated prepare(_:forSingleResult:) method
+    func prepare(_ db: Database, forSingleResult singleResult: Bool) throws -> (SelectStatement, RowAdapter?) { preconditionFailure() }
+    func makePreparedRequest(_ db: Database, forSingleResult singleResult: Bool) throws -> PreparedRequest { preconditionFailure() }
 }
 
 // MARK: - FetchableRecord

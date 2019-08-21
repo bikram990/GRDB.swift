@@ -1,15 +1,15 @@
 import XCTest
-#if GRDBCIPHER
-    @testable import GRDBCipher // @testable so that we have access to SQLiteConnectionWillClose
-#elseif GRDBCUSTOMSQLITE
-    @testable import GRDBCustomSQLite // @testable so that we have access to SQLiteConnectionWillClose
+#if GRDBCUSTOMSQLITE
+    @testable import GRDBCustomSQLite
 #else
-    #if SWIFT_PACKAGE
+    #if GRDBCIPHER
+        import SQLCipher
+    #elseif SWIFT_PACKAGE
         import CSQLite
     #else
         import SQLite3
     #endif
-    @testable import GRDB       // @testable so that we have access to SQLiteConnectionWillClose
+    @testable import GRDB
 #endif
 
 // Support for Database.logError
@@ -127,11 +127,11 @@ class GRDBTestCase: XCTestCase {
         }
     }
     
-    func assertDidExecute(sql: String) {
-        XCTAssertTrue(sqlQueries.contains(sql), "Did not execute \(sql)")
+    func assertDidExecute(sql: String, file: StaticString = #file, line: UInt = #line) {
+        XCTAssertTrue(sqlQueries.contains(sql), "Did not execute \(sql)", file: file, line: line)
     }
     
-    func assert(_ record: MutablePersistableRecord, isEncodedIn row: Row, file: StaticString = #file, line: UInt = #line) {
+    func assert(_ record: EncodableRecord, isEncodedIn row: Row, file: StaticString = #file, line: UInt = #line) {
         let recordDict = record.databaseDictionary
         let rowDict = Dictionary(row, uniquingKeysWith: { (left, _) in left })
         XCTAssertEqual(recordDict, rowDict, file: file, line: line)
@@ -146,8 +146,8 @@ class GRDBTestCase: XCTestCase {
     
     // Compare SQL strings (ignoring leading and trailing white space and semicolons.
     func assertEqualSQL<Request: FetchRequest>(_ db: Database, _ request: Request, _ sql: String, file: StaticString = #file, line: UInt = #line) throws {
-        let (statement, _) = try request.prepare(db)
-        try statement.makeCursor().next()
+        let request = try request.makePreparedRequest(db, forSingleResult: false)
+        try request.statement.makeCursor().next()
         assertEqualSQL(lastSQLQuery, sql, file: file, line: line)
     }
     
@@ -160,9 +160,17 @@ class GRDBTestCase: XCTestCase {
     
     func sql<Request: FetchRequest>(_ databaseReader: DatabaseReader, _ request: Request) -> String {
         return try! databaseReader.unsafeRead { db in
-            let (statement, _) = try request.prepare(db)
-            try statement.makeCursor().next()
+            let request = try request.makePreparedRequest(db, forSingleResult: false)
+            try request.statement.makeCursor().next()
             return lastSQLQuery
         }
     }
 }
+
+#if !swift(>=4.2)
+extension Sequence {
+    func allSatisfy(_ predicate: (Self.Element) throws -> Bool) rethrows -> Bool {
+        return try !contains(where: { try !predicate($0) })
+    }
+}
+#endif

@@ -1,8 +1,6 @@
 #if SQLITE_ENABLE_FTS5
 import XCTest
-#if GRDBCIPHER
-    import GRDBCipher
-#elseif GRDBCUSTOMSQLITE
+#if GRDBCUSTOMSQLITE
     import GRDBCustomSQLite
 #else
     import GRDB
@@ -117,7 +115,7 @@ class FTS5RecordTests: GRDBTestCase {
             
             let pattern = FTS5Pattern(matchingAllTokensIn: "Herman Melville")!
             XCTAssertEqual(try Book.matching(pattern).fetchCount(db), 1)
-            XCTAssertEqual(lastSQLQuery, "SELECT COUNT(*) FROM \"books\" WHERE (\"books\" MATCH 'herman melville')")
+            XCTAssertEqual(lastSQLQuery, "SELECT COUNT(*) FROM \"books\" WHERE \"books\" MATCH 'herman melville'")
             
             XCTAssertEqual(try Book.fetchCount(db), 1)
             XCTAssertEqual(lastSQLQuery, "SELECT COUNT(*) FROM \"books\"")

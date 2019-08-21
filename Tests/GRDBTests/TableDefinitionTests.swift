@@ -1,7 +1,5 @@
 import XCTest
-#if GRDBCIPHER
-    import GRDBCipher
-#elseif GRDBCUSTOMSQLITE
+#if GRDBCUSTOMSQLITE
     import GRDBCustomSQLite
 #else
     import GRDB
@@ -190,15 +188,15 @@ class TableDefinitionTests: GRDBTestCase {
             assertEqualSQL(
                 lastSQLQuery,
                 ("CREATE TABLE \"test\" (" +
-                    "\"a\" INTEGER CHECK ((\"a\" > 0)), " +
+                    "\"a\" INTEGER CHECK (\"a\" > 0), " +
                     "\"b\" INTEGER CHECK (b <> 2), " +
-                    "\"c\" INTEGER CHECK ((\"c\" > 0)) CHECK ((\"c\" < 10))" +
+                    "\"c\" INTEGER CHECK (\"c\" > 0) CHECK (\"c\" < 10)" +
                     ")") as String)
             
             // Sanity check
-            try db.execute("INSERT INTO test (a, b, c) VALUES (1, 0, 1)")
+            try db.execute(sql: "INSERT INTO test (a, b, c) VALUES (1, 0, 1)")
             do {
-                try db.execute("INSERT INTO test (a, b, c) VALUES (0, 0, 1)")
+                try db.execute(sql: "INSERT INTO test (a, b, c) VALUES (0, 0, 1)")
                 XCTFail()
             } catch {
             }
@@ -226,9 +224,9 @@ class TableDefinitionTests: GRDBTestCase {
                     ")") as String)
             
             // Sanity check
-            try db.execute("INSERT INTO test DEFAULT VALUES")
-            XCTAssertEqual(try Int.fetchOne(db, "SELECT a FROM test")!, 1)
-            XCTAssertEqual(try String.fetchOne(db, "SELECT c FROM test")!, "'fooéı👨👨🏿🇫🇷🇨🇮'")
+            try db.execute(sql: "INSERT INTO test DEFAULT VALUES")
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT a FROM test")!, 1)
+            XCTAssertEqual(try String.fetchOne(db, sql: "SELECT c FROM test")!, "'fooéı👨👨🏿🇫🇷🇨🇮'")
         }
     }
 
@@ -385,14 +383,14 @@ class TableDefinitionTests: GRDBTestCase {
                 ("CREATE TABLE \"test\" (" +
                     "\"a\" INTEGER, " +
                     "\"b\" INTEGER, " +
-                    "CHECK (((\"a\" + \"b\") < 10)), " +
+                    "CHECK ((\"a\" + \"b\") < 10), " +
                     "CHECK (a + b < 10)" +
                     ")") as String)
             
             // Sanity check
-            try db.execute("INSERT INTO test (a, b) VALUES (1, 0)")
+            try db.execute(sql: "INSERT INTO test (a, b) VALUES (1, 0)")
             do {
-                try db.execute("INSERT INTO test (a, b) VALUES (5, 5)")
+                try db.execute(sql: "INSERT INTO test (a, b) VALUES (5, 5)")
                 XCTFail()
             } catch {
             }
@@ -550,7 +548,7 @@ class TableDefinitionTests: GRDBTestCase {
             }
             
             try db.create(index: "test_on_a_b", on: "test", columns: ["a", "b"], unique: true, ifNotExists: true, condition: Column("a") == 1)
-            assertEqualSQL(lastSQLQuery, "CREATE UNIQUE INDEX IF NOT EXISTS \"test_on_a_b\" ON \"test\"(\"a\", \"b\") WHERE (\"a\" = 1)")
+            assertEqualSQL(lastSQLQuery, "CREATE UNIQUE INDEX IF NOT EXISTS \"test_on_a_b\" ON \"test\"(\"a\", \"b\") WHERE \"a\" = 1")
             
             // Sanity check
             XCTAssertEqual(try Set(db.indexes(on: "test").map { $0.name }), ["test_on_a_b"])
@@ -571,6 +569,17 @@ class TableDefinitionTests: GRDBTestCase {
             
             // Sanity check
             XCTAssertTrue(try db.indexes(on: "test").isEmpty)
+        }
+    }
+    
+    func testReindex() throws {
+        let dbQueue = try makeDatabaseQueue()
+        try dbQueue.inDatabase { db in
+            try db.reindex(collation: .binary)
+            assertEqualSQL(lastSQLQuery, "REINDEX BINARY")
+            
+            try db.reindex(collation: .localizedCompare)
+            assertEqualSQL(lastSQLQuery, "REINDEX swiftLocalizedCompare")
         }
     }
 }

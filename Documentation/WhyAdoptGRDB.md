@@ -69,7 +69,7 @@ By adopting the [FetchableRecord] protocol, places can be loaded from SQL reques
 
 ```swift
 extension Place: FetchableRecord { ... }
-let places = try Place.fetchAll(db, "SELECT * FROM place") // [Place]
+let places = try Place.fetchAll(db, sql: "SELECT * FROM place") // [Place]
 ```
 
 Add the [TableRecord] protocol, and SQL requests are generated for you:
@@ -86,7 +86,11 @@ extension Place: PersistableRecord { ... }
 try place.delete(db)
 ```
 
+For your convenience, those record protocols can be derived from the [Decodable and Encodable](https://developer.apple.com/documentation/foundation/archives_and_serialization/encoding_and_decoding_custom_types) protocols of the standard library. [Codable records] are even given free support for JSON columns and other niceties.
+
 Being a protocol-oriented library that welcomes immutable types, GRDB records are unlike records in other ORM libraries. Particularly, records do not auto-update, and records are not uniqued. We'll see below that the lack of those features can be replaced with **database change notifications**, with many advantages.
+
+See [Good Practices for Designing Record Types](GoodPracticesForDesigningRecordTypes.md) for some practical advice.
 
 
 ### Allow database records to cross threads
@@ -113,7 +117,7 @@ let players = try Player.fetchAll(db)
 
 **Fetched records behave just like an in-memory cache of the database content.** Your application is free to decide, on its own, how it should handle the lifetime of those cached values: by ignoring future database changes, by observing database changes and react accordingly, or in any way deemed relevant.
 
-There are several ways to be notified of database changes. You can build on top of the low-level [TransactionObserver] protocol. Or you can use [FetchedRecordsController], which looks a lot like Core Data's NSFetchedResultsController, and is able to animate table and collection views. And don't forget [RxGRDB], a set of reactive extensions based on [RxSwift]:
+There are several ways to be notified of database changes. You can build on top of the fundamental but low-level [TransactionObserver] protocol. Usually, you'll use [ValueObservation], which notifies fresh values after each database change, or [FetchedRecordsController], which animates table and collection views. And don't forget [GRDBCombine] and [RxGRDB], two sets of reactive extensions based on [Combine] and [RxSwift]:
 
 ```swift
 Player.all().rx
@@ -168,16 +172,23 @@ We can see that the threat of conflicts is *always* left to the application. Cor
 
 Finally, raw FMDatabase, SQLite.swift, and Core Data are the hardest tools, and you'd better be a very skilled developer in order to use them properly.
 
-For further information about GRDB concurrency, check its detailed [Concurrency Guide].
+For detailed information about GRDB concurrency, check the [Concurrency Guide].
+
+For practical advice on designing the database access layer of your application, see the [Good Practices for Designing Record Types](GoodPracticesForDesigningRecordTypes.md).
 
 
 ### Never pay for using raw SQL
 
 SQL is a weird language. Born in the 70s, easy to [misuse](https://xkcd.com/327/), feared by some developers, despised by others, and yet wonderfully concise and powerful.
 
-GRDB [query interface] and [associations] can generate SQL for you:
+GRDB [records], [query interface] and [associations] can generate SQL for you:
 
 ```swift
+// UPDATE player SET score = 950 WHERE id = 42
+try player.updateChanges {
+    $0.score += 10
+}
+
 // SELECT * FROM player ORDER BY score DESC LIMIT 10
 let bestPlayers: [Player] = try Player
     .order(scoreColumn.desc)
@@ -200,19 +211,48 @@ let bookInfos: [BookInfo] = BookInfo.fetchAll(db, request)
 But you can always switch to SQL when you want to:
 
 ```swift
-let bestPlayers: [Player] = try Player.fetchAll(db, """
+try db.execute(
+    sql: "UPDATE player SET score = ? WHERE id = ?",
+    arguments: [950, 42])
+
+let bestPlayers: [Player] = try Player.fetchAll(db, sql: """
     SELECT * FROM player ORDER BY score DESC LIMIT 10
     """)
 
-let maximumScore: Int? = try Int.fetchOne(db, """
+let maximumScore: Int? = try Int.fetchOne(db, sql: """
     SELECT MAX(score) FROM player
     """)
+```
+
+With Swift 5, you can profit from **SQL interpolation**. It lets you build SQL queries from natural looking strings, but without any risk of syntax error or [SQL injection](https://xkcd.com/327/):
+
+```swift
+try db.execute(literal: "UPDATE player SET score = \(score) WHERE id = \(id)")
+
+extension Player {
+    static func filter(name: String) -> SQLRequest<Player> {
+        return "SELECT * FROM \(self) WHERE \(CodingKeys.name) = \(name)"
+    }
+}
+
+let player = try Player.filter(name: "Arthur O'Brien").fetchOne(db)
+```
+
+Custom SQL requests as the one above are welcome in database observation tools like the built-in [ValueObservation], or the companion libraries [GRDBCombine] and [RxGRDB]:
+
+```swift
+// RxGRDB
+Player.filter(name: "Arthur O'Brien").rx
+    .fetchOne(in: dbQueue)
+    .subscribe(onNext: { (player: Player?) in
+        print("Player has changed")
+    })
 ```
 
 Power users can also consume complex joined SQL queries into handy record values, by *adapting* raw database rows to the decoded records (see [Joined Queries Support](#../README.md#joined-queries-support)):
 
 ```swift
-let bookInfos: [BookInfo] = SQLRequest<BookInfo>("""
+let bookInfos: [BookInfo] = SQLRequest<BookInfo>(sql: """
     SELECT book.*, author.*
     FROM book
     LEFT JOIN author ON author.id = book.authorId
@@ -230,34 +270,12 @@ let bookInfos: [BookInfo] = SQLRequest<BookInfo>("""
 In performance-critical sections, you may want to deal with raw database rows, and fetch [lazy cursors](../README.md#cursors) instead of arrays:
 
 ```swift
-let rows = try Row.fetchCursor(db, "SELECT id, name, score FROM player")
+let rows = try Row.fetchCursor(db, sql: "SELECT id, name, score FROM player")
 while let row = try rows.next() {
     let id: Int64 = row[0]
     let name: String = row[1]
     let score: Int = row[2]
 }
-```
-
-When you feel like your code clarity would be enhanced by hiding your custom SQL in a dedicated method, you can build [custom requests](../README.md#custom-requests):
-
-```swift
-extension Player {
-    static func customRequest(...) -> SQLRequest<Player> {
-        return SQLRequest<Player>("SELECT ...", arguments: ...)
-    }
-}
-
-let players = try Player.customRequest(...).fetchAll(db)
-```
-
-Those custom requests are welcome in database observation tools like [FetchedRecordsController] and [RxGRDB]:
-
-```swift
-Player.customRequest(...).rx
-    .fetchAll(in: dbQueue)
-    .subscribe(onNext: { players: [Player] in
-        print("Players have changed")
-    })
 ```
 
 ---
@@ -273,6 +291,7 @@ Happy GRDB! :gift:
 [DatabasePool]: ../README.md#database-pools
 [Diesel]: http://diesel.rs
 [FCModel]: https://github.com/marcoarment/FCModel
+[ValueObservation]: ../README.md#valueobservation
 [FetchedRecordsController]: ../README.md#fetchedrecordscontroller
 [Fluent]: https://github.com/vapor/fluent
 [FMDB]: http://github.com/ccgus/fmdb
@@ -283,6 +302,8 @@ Happy GRDB! :gift:
 [FetchableRecord]: ../README.md#records
 [RxGRDB]: https://github.com/RxSwiftCommunity/RxGRDB
 [RxSwift]: https://github.com/ReactiveX/RxSwift
+[GRDBCombine]: http://github.com/groue/GRDBCombine
+[Combine]: https://developer.apple.com/documentation/combine
 [SQLite.swift]: http://github.com/stephencelis/SQLite.swift
 [StORM]: https://www.perfect.org/docs/StORM.html
 [Swift-Kuery]: http://github.com/IBM-Swift/Swift-Kuery
@@ -290,3 +311,5 @@ Happy GRDB! :gift:
 [TransactionObserver]: ../README.md#transactionobserver-protocol
 [query interface]: ../README.md#the-query-interface
 [associations]: AssociationsBasics.md
+[Codable records]: ../README.md#codable-records
+[records]: ../README.md#records

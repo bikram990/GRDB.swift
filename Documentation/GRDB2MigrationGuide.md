@@ -172,41 +172,31 @@ extension Player {
 }
 ```
 
-When your record adopts the Codable protocol, you can use its [coding keys](https://developer.apple.com/documentation/foundation/archives_and_serialization/encoding_and_decoding_custom_types) as columns:
+When your record adopts the Codable protocol, you can use its [coding keys](https://developer.apple.com/documentation/foundation/archives_and_serialization/encoding_and_decoding_custom_types) to safely define database columns:
 
 ```swift
 // GRDB 3
-struct Player: Codable, FetchableRecord, PersistableRecord {
+struct Player: Codable {
     var id: Int64
     var name: String
     var score: Int
-    
-    // Add ColumnExpression conformance
-    private enum CodingKeys: String, CodingKey, ColumnExpression {
-        case id, name, score
-    }
 }
 
-extension Player {
+extension Player: FetchableRecord, PersistableRecord {
+    enum Columns {
+        static let id = Column(CodingKeys.id.stringValue)
+        static let name = Column(CodingKeys.name.stringValue)
+        static let score = Column(CodingKeys.score.stringValue)
+    }
+    
     static func filter(name: String) -> QueryInterfaceRequest<Player> {
-        return filter(CodingKeys.name == name)
+        return filter(Columns.name == name)
     }
     
     static var maximumScore: QueryInterfaceRequest<Int> {
-        return select(max(CodingKeys.score), as: Int.self)
+        return select(max(Columns.score), as: Int.self)
     }
 }
-```
-
-GRDB can apply additional optimizations on expressions that adopt ColumnExpression, so conform to this protocol whenever you define a custom column type:
-
-```swift
-struct TypedColumn: ColumnExpression {
-    var name: String
-    var sqlType: String
-}
-let nameColumn = TypedColumn(name: "name", sqlType: "VARCHAR")
-let arthur = try Player.filter(nameColumn == "Arthur").fetchOne(db)
 ```
 
 
@@ -446,14 +436,16 @@ Now you'll write instead:
 
 ```swift
 // GRDB 3
-dbQueue.rx
-    .fetch(from: [request, ...]) { db in try fetchResult(db) }
+ValueObservation
+    .tracking([request, ...], fetch: { db in try fetchResult(db) })
+    .rx
+    .fetch(in: dbQueue)
     .subscribe(...)
 ```
 
 It's just a syntactic change, without any impact on the runtime.
 
-RxGRDB for GRDB 3 also introduces a new protocol, [DatabaseRegionConvertible], that allows a better encapsulation of complex requests, and a streamlined observable definition.
+GRDB 3.6 also introduces a new protocol, [DatabaseRegionConvertible], that allows a better encapsulation of complex requests, and a streamlined observable definition.
 
 For example:
 
@@ -478,8 +470,9 @@ dbQueue.rx
 // GRDB 3: Track a team and its players
 struct TeamInfoRequest: DatabaseRegionConvertible { ... }
 let request = TeamInfoRequest(teamId: 1)
-dbQueue.rx
-    .fetch(from: [request]) { try request.fetchOne($0) }
+ValueObservation.tracking(request, fetch: { try request.fetchOne($0) })
+    .rx
+    .fetch(in: dbQueue)
     .subscribe(onNext: { teamInfo: TeamInfo? in
         ...
     })
@@ -526,5 +519,5 @@ If you have time, you may dig deeper in GRDB 3 with those updated documentation 
 [record protocols]: ../README.md#record-protocols-overview
 [Custom requests]: ../README.md#custom-requests
 [query interface]: ../README.md#the-query-interface
-[DatabaseRegionConvertible]: https://github.com/groue/RxGRDB/blob/master/README.md#databaseregionconvertible-protocol
+[DatabaseRegionConvertible]: https://github.com/groue/GRDB.swift#the-databaseregionconvertible-protocol
 [conditional conformances]: https://github.com/apple/swift-evolution/blob/master/proposals/0143-conditional-conformances.md

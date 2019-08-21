@@ -1,7 +1,5 @@
 import XCTest
-#if GRDBCIPHER
-    import GRDBCipher
-#elseif GRDBCUSTOMSQLITE
+#if GRDBCUSTOMSQLITE
     import GRDBCustomSQLite
 #else
     import GRDB
@@ -55,7 +53,7 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
                 let expectedSQL = """
                     SELECT "name" \
                     FROM "a" \
-                    WHERE (("id" = 1) AND (("name" IS NOT NULL) AND ("name" = 'foo'))) \
+                    WHERE ("id" = 1) AND (("name" IS NOT NULL) AND ("name" = 'foo')) \
                     GROUP BY "name" \
                     HAVING "name" \
                     ORDER BY "name"
@@ -92,7 +90,7 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
                 let expectedSQL = """
                     SELECT "customA"."name" \
                     FROM "a" "customA" \
-                    WHERE (("customA"."id" = 1) AND (("customA"."name" IS NOT NULL) AND ("customA"."name" = 'foo'))) \
+                    WHERE ("customA"."id" = 1) AND (("customA"."name" IS NOT NULL) AND ("customA"."name" = 'foo')) \
                     GROUP BY "customA"."name" \
                     HAVING "customA"."name" \
                     ORDER BY "customA"."name"
@@ -133,12 +131,12 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
             try assertEqualSQL(db, A.including(required: A.parent), """
                 SELECT "a1".*, "a2".* \
                 FROM "a" "a1" \
-                JOIN "a" "a2" ON ("a2"."id" = "a1"."parentId")
+                JOIN "a" "a2" ON "a2"."id" = "a1"."parentId"
                 """)
             try assertEqualSQL(db, A.including(required: A.child), """
                 SELECT "a1".*, "a2".* \
                 FROM "a" "a1" \
-                JOIN "a" "a2" ON ("a2"."parentId" = "a1"."id")
+                JOIN "a" "a2" ON "a2"."parentId" = "a1"."id"
                 """)
         }
     }
@@ -154,8 +152,8 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
             try assertEqualSQL(db, request, """
                 SELECT "a1".*, "b".*, "a2".* \
                 FROM "a" "a1" \
-                JOIN "b" ON ("b"."id" = "a1"."bid1") \
-                JOIN "a" "a2" ON ("a2"."bid2" = "b"."id")
+                JOIN "b" ON "b"."id" = "a1"."bid1" \
+                JOIN "a" "a2" ON "a2"."bid2" = "b"."id"
                 """)
         }
     }
@@ -173,8 +171,8 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
             try assertEqualSQL(db, request, """
                 SELECT "a".*, "b1".*, "b2".* \
                 FROM "a" \
-                JOIN "b" "b1" ON ("b1"."id" = "a"."bid1") \
-                JOIN "b" "b2" ON ("b2"."id" = "a"."bid2")
+                JOIN "b" "b1" ON "b1"."id" = "a"."bid1" \
+                JOIN "b" "b2" ON "b2"."id" = "a"."bid2"
                 """)
         }
     }
@@ -194,10 +192,10 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
             try assertEqualSQL(db, request, """
                 SELECT "a1".*, "b1".*, "a2".*, "b2".*, "a3".* \
                 FROM "a" "a1" \
-                JOIN "b" "b1" ON ("b1"."id" = "a1"."bid1") \
-                JOIN "a" "a2" ON ("a2"."bid2" = "b1"."id") \
-                JOIN "b" "b2" ON ("b2"."id" = "a1"."bid2") \
-                JOIN "a" "a3" ON ("a3"."bid1" = "b2"."id")
+                JOIN "b" "b1" ON "b1"."id" = "a1"."bid1" \
+                JOIN "a" "a2" ON "a2"."bid2" = "b1"."id" \
+                JOIN "b" "b2" ON "b2"."id" = "a1"."bid2" \
+                JOIN "a" "a3" ON "a3"."bid1" = "b2"."id"
                 """)
         }
     }
@@ -215,8 +213,8 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
             let expectedSQL = """
                 SELECT "customA1".*, "customB".*, "customA2".* \
                 FROM "a" "customA1" \
-                JOIN "b" "customB" ON ("customB"."id" = "customA1"."bid1") \
-                JOIN "a" "customA2" ON ("customA2"."bid2" = "customB"."id")
+                JOIN "b" "customB" ON "customB"."id" = "customA1"."bid1" \
+                JOIN "a" "customA2" ON "customA2"."bid2" = "customB"."id"
                 """
             
             do {
@@ -255,7 +253,7 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
                 try assertEqualSQL(db, request, """
                     SELECT "a1".*, "a".* \
                     FROM "a" "a1" \
-                    JOIN "b" "a" ON ("a"."id" = "a1"."bid1")
+                    JOIN "b" "a" ON "a"."id" = "a1"."bid1"
                     """)
             }
             do {
@@ -264,7 +262,7 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
                 try assertEqualSQL(db, request, """
                     SELECT "a1".*, "A".* \
                     FROM "a" "a1" \
-                    JOIN "b" "A" ON ("A"."id" = "a1"."bid1")
+                    JOIN "b" "A" ON "A"."id" = "a1"."bid1"
                     """)
             }
             do {
@@ -273,7 +271,7 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
                 try assertEqualSQL(db, request, """
                     SELECT "b".*, "b1".* \
                     FROM "a" "b" \
-                    JOIN "b" "b1" ON ("b1"."id" = "b"."bid1")
+                    JOIN "b" "b1" ON "b1"."id" = "b"."bid1"
                     """)
             }
             do {
@@ -282,7 +280,7 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
                 try assertEqualSQL(db, request, """
                     SELECT "B".*, "b1".* \
                     FROM "a" "B" \
-                    JOIN "b" "b1" ON ("b1"."id" = "B"."bid1")
+                    JOIN "b" "b1" ON "b1"."id" = "B"."bid1"
                     """)
             }
         }
@@ -305,11 +303,11 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
             let expectedSQL = """
                 SELECT "a1".*, "b1".*, "a2".*, "b2".*, "a3".* \
                 FROM "a" "a1" \
-                JOIN "b" "b1" ON ("b1"."id" = "a1"."bid1") \
-                JOIN "a" "a2" ON ("a2"."bid2" = "b1"."id") \
-                JOIN "b" "b2" ON ("b2"."id" = "a1"."bid2") \
-                JOIN "a" "a3" ON ("a3"."bid1" = "b2"."id") \
-                WHERE ((("a1"."name" IS NOT NULL) AND ("a1"."name" > "a3"."name")) AND ("a2"."name" = 'foo'))
+                JOIN "b" "b1" ON "b1"."id" = "a1"."bid1" \
+                JOIN "a" "a2" ON "a2"."bid2" = "b1"."id" \
+                JOIN "b" "b2" ON "b2"."id" = "a1"."bid2" \
+                JOIN "a" "a3" ON "a3"."bid1" = "b2"."id" \
+                WHERE (("a1"."name" IS NOT NULL) AND ("a1"."name" > "a3"."name")) AND ("a2"."name" = 'foo')
                 """
             
             do {
@@ -334,6 +332,148 @@ class AssociationTableAliasTestsSQLTests : GRDBTestCase {
                         .including(required: B.a1.aliased(A1)))
                     .filter(condition)
                 try assertEqualSQL(db, request, expectedSQL)
+            }
+        }
+    }
+    
+    func testAssociationRewrite() throws {
+        let dbQueue = try makeDatabaseQueue()
+        try dbQueue.inDatabase { db in
+            do {
+                let request: QueryInterfaceRequest<A> = {
+                    let parentAlias = TableAlias()
+                    let name = Column("name")
+                    return A
+                        .joining(required: A.parent.aliased(parentAlias))
+                        .filter(parentAlias[name] == "foo")
+                }()
+                
+                let request2: QueryInterfaceRequest<A> = {
+                    let parentAlias = TableAlias()
+                    let name = Column("name")
+                    return request
+                        .joining(optional: A.parent.aliased(parentAlias))
+                        .order(parentAlias[name])
+                }()
+                
+                let request3 = request2.including(optional: A.parent)
+                
+                try assertEqualSQL(db, request3, """
+                    SELECT "a1".*, "a2".* \
+                    FROM "a" "a1" \
+                    JOIN "a" "a2" ON "a2"."id" = "a1"."parentId" \
+                    WHERE "a2"."name" = 'foo' \
+                    ORDER BY "a2"."name"
+                    """)
+            }
+            do {
+                let request: QueryInterfaceRequest<A> = {
+                    let parentAlias = TableAlias(name: "parent")
+                    let name = Column("name")
+                    return A
+                        .joining(required: A.parent.aliased(parentAlias))
+                        .filter(parentAlias[name] == "foo")
+                }()
+                
+                let request2: QueryInterfaceRequest<A> = {
+                    let parentAlias = TableAlias()
+                    let name = Column("name")
+                    return request
+                        .joining(optional: A.parent.aliased(parentAlias))
+                        .order(parentAlias[name])
+                }()
+                
+                let request3 = request2.including(optional: A.parent)
+                
+                try assertEqualSQL(db, request3, """
+                    SELECT "a".*, "parent".* \
+                    FROM "a" \
+                    JOIN "a" "parent" ON "parent"."id" = "a"."parentId" \
+                    WHERE "parent"."name" = 'foo' \
+                    ORDER BY "parent"."name"
+                    """)
+            }
+            do {
+                let request: QueryInterfaceRequest<A> = {
+                    let parentAlias = TableAlias()
+                    let name = Column("name")
+                    return A
+                        .joining(required: A.parent.aliased(parentAlias))
+                        .filter(parentAlias[name] == "foo")
+                }()
+                
+                let request2: QueryInterfaceRequest<A> = {
+                    let parentAlias = TableAlias(name: "parent")
+                    let name = Column("name")
+                    return request
+                        .joining(optional: A.parent.aliased(parentAlias))
+                        .order(parentAlias[name])
+                }()
+                
+                let request3 = request2.including(optional: A.parent)
+                
+                try assertEqualSQL(db, request3, """
+                    SELECT "a".*, "parent".* \
+                    FROM "a" \
+                    JOIN "a" "parent" ON "parent"."id" = "a"."parentId" \
+                    WHERE "parent"."name" = 'foo' \
+                    ORDER BY "parent"."name"
+                    """)
+            }
+            do {
+                let request: QueryInterfaceRequest<A> = {
+                    let parentAlias = TableAlias(name: "parent")
+                    let name = Column("name")
+                    return A
+                        .joining(required: A.parent.aliased(parentAlias))
+                        .filter(parentAlias[name] == "foo")
+                }()
+                
+                let request2: QueryInterfaceRequest<A> = {
+                    let parentAlias = TableAlias(name: "parent")
+                    let name = Column("name")
+                    return request
+                        .joining(optional: A.parent.aliased(parentAlias))
+                        .order(parentAlias[name])
+                }()
+                
+                let request3 = request2.including(optional: A.parent)
+                
+                try assertEqualSQL(db, request3, """
+                    SELECT "a".*, "parent".* \
+                    FROM "a" \
+                    JOIN "a" "parent" ON "parent"."id" = "a"."parentId" \
+                    WHERE "parent"."name" = 'foo' \
+                    ORDER BY "parent"."name"
+                    """)
+            }
+            do {
+                let request: QueryInterfaceRequest<A> = {
+                    let parentAlias = TableAlias()
+                    let name = Column("name")
+                    return A
+                        .joining(required: A.parent.aliased(parentAlias))
+                        .filter(parentAlias[name] == "foo")
+                }()
+                
+                let request2: QueryInterfaceRequest<A> = {
+                    let parentAlias = TableAlias()
+                    let name = Column("name")
+                    return request
+                        .joining(optional: A.parent.aliased(parentAlias))
+                        .order(parentAlias[name])
+                }()
+                
+                let parentAlias = TableAlias(name: "parent")
+                let request3 = request2.including(optional: A.parent.aliased(parentAlias))
+                
+                try assertEqualSQL(db, request3, """
+                    SELECT "a".*, "parent".* \
+                    FROM "a" \
+                    JOIN "a" "parent" ON "parent"."id" = "a"."parentId" \
+                    WHERE "parent"."name" = 'foo' \
+                    ORDER BY "parent"."name"
+                    """)
             }
         }
     }

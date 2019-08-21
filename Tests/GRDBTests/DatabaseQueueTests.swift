@@ -1,8 +1,6 @@
 import XCTest
 import Dispatch
-#if GRDBCIPHER
-    import GRDBCipher
-#elseif GRDBCUSTOMSQLITE
+#if GRDBCUSTOMSQLITE
     import GRDBCustomSQLite
 #else
     import GRDB
@@ -27,10 +25,6 @@ class DatabaseQueueTests: GRDBTestCase {
             XCTAssert([
                 "file is encrypted or is not a database",
                 "file is not a database"].contains(error.message!))
-            XCTAssertTrue(error.sql == nil)
-            XCTAssert([
-                "SQLite error 26: file is encrypted or is not a database",
-                "SQLite error 26: file is not a database"].contains(error.description))
         }
     }
     #endif
@@ -46,12 +40,12 @@ class DatabaseQueueTests: GRDBTestCase {
         }
         dbQueue.add(function: fn)
         try dbQueue.inDatabase { db in
-            XCTAssertEqual(try Int.fetchOne(db, "SELECT succ(1)"), 2) // 2
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT succ(1)"), 2) // 2
         }
         dbQueue.remove(function: fn)
         do {
             try dbQueue.inDatabase { db in
-                try db.execute("SELECT succ(1)")
+                try db.execute(sql: "SELECT succ(1)")
                 XCTFail("Expected Error")
             }
             XCTFail("Expected Error")
@@ -73,12 +67,12 @@ class DatabaseQueueTests: GRDBTestCase {
         }
         dbQueue.add(collation: collation)
         try dbQueue.inDatabase { db in
-            try db.execute("CREATE TABLE files (name TEXT COLLATE TEST_COLLATION_FOO)")
+            try db.execute(sql: "CREATE TABLE files (name TEXT COLLATE TEST_COLLATION_FOO)")
         }
         dbQueue.remove(collation: collation)
         do {
             try dbQueue.inDatabase { db in
-                try db.execute("CREATE TABLE files_fail (name TEXT COLLATE TEST_COLLATION_FOO)")
+                try db.execute(sql: "CREATE TABLE files_fail (name TEXT COLLATE TEST_COLLATION_FOO)")
                 XCTFail("Expected Error")
             }
             XCTFail("Expected Error")
@@ -129,6 +123,74 @@ class DatabaseQueueTests: GRDBTestCase {
             // are documented to be a debug-only tool.
             let label = String(utf8String: __dispatch_queue_get_label(nil))
             XCTAssertEqual(label, "Toreador")
+        }
+    }
+    
+    func testTargetQueue() throws {
+        // dispatchPrecondition(condition:) availability
+        if #available(OSX 10.12, iOS 10.0, *) {
+            func test(targetQueue: DispatchQueue) throws {
+                dbConfiguration.targetQueue = targetQueue
+                let dbQueue = try makeDatabaseQueue()
+                try dbQueue.write { _ in
+                    dispatchPrecondition(condition: .onQueue(targetQueue))
+                }
+                dbQueue.read { _ in
+                    dispatchPrecondition(condition: .onQueue(targetQueue))
+                }
+            }
+            
+            // background queue
+            try test(targetQueue: .global(qos: .background))
+            
+            // main queue
+            let expectation = self.expectation(description: "main")
+            DispatchQueue.global(qos: .default).async {
+                try! test(targetQueue: .main)
+                expectation.fulfill()
+            }
+            waitForExpectations(timeout: 1, handler: nil)
+        }
+    }
+    
+    func testQoS() throws {
+        // dispatchPrecondition(condition:) availability
+        if #available(OSX 10.12, iOS 10.0, *) {
+            func test(qos: DispatchQoS) throws {
+                // https://forums.swift.org/t/what-is-the-default-target-queue-for-a-serial-queue/18094/5
+                //
+                // > [...] the default target queue [for a serial queue] is the
+                // > [default] overcommit [global concurrent] queue.
+                //
+                // We want this default target queue in order to test database QoS
+                // with dispatchPrecondition(condition:).
+                //
+                // > [...] You can get a reference to the overcommit queue by
+                // > dropping down to the C function dispatch_get_global_queue
+                // > (available in Swift with a __ prefix) and passing the private
+                // > value of DISPATCH_QUEUE_OVERCOMMIT.
+                // >
+                // > [...] Of course you should not do this in production code,
+                // > because DISPATCH_QUEUE_OVERCOMMIT is not a public API. I don't
+                // > know of a way to get a reference to the overcommit queue using
+                // > only public APIs.
+                let DISPATCH_QUEUE_OVERCOMMIT: UInt = 2
+                let targetQueue = __dispatch_get_global_queue(
+                    Int(qos.qosClass.rawValue.rawValue),
+                    DISPATCH_QUEUE_OVERCOMMIT)
+                
+                dbConfiguration.qos = qos
+                let dbQueue = try makeDatabaseQueue()
+                try dbQueue.write { _ in
+                    dispatchPrecondition(condition: .onQueue(targetQueue))
+                }
+                dbQueue.read { _ in
+                    dispatchPrecondition(condition: .onQueue(targetQueue))
+                }
+            }
+            
+            try test(qos: .background)
+            try test(qos: .userInitiated)
         }
     }
 }

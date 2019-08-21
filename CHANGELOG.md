@@ -1,6 +1,1173 @@
 Release Notes
 =============
 
+All notable changes to this project will be documented in this file.
+
+GRDB adheres to [Semantic Versioning](https://semver.org/), with one expection: APIs flagged [**:fire: EXPERIMENTAL**](README.md#what-are-experimental-features). Those are unstable, and may break between any two minor releases of the library.
+
+
+<!--
+[Next Release](#next-release)
+-->
+
+
+#### 4.x Releases
+
+- `4.2.x` Releases - [4.2.0](#420) | [4.2.1](#421)
+- `4.1.x` Releases - [4.1.0](#410) | [4.1.1](#411)
+- `4.0.x` Releases - [4.0.0](#400) | [4.0.1](#401)
+
+#### 3.x Releases
+
+- `3.7.x` Releases - [3.7.0](#370)
+- `3.6.x` Releases - [3.6.0](#360) | [3.6.1](#361) | [3.6.2](#362)
+- `3.5.x` Releases - [3.5.0](#350)
+- `3.4.x` Releases - [3.4.0](#340)
+- `3.3.x` Releases - [3.3.0](#330) | [3.3.1](#331)
+- `3.3.0` Betas - [3.3.0-beta1](#330-beta1)
+- `3.2.x` Releases - [3.2.0](#320)
+- `3.1.x` Releases - [3.1.0](#310)
+- `3.0.x` Releases - [3.0.0](#300)
+
+#### 2.x Releases
+
+- `2.10.x` Releases - [2.10.0](#2100)
+- `2.9.x` Releases - [2.9.0](#290)
+- `2.8.x` Releases - [2.8.0](#280)
+- `2.7.x` Releases - [2.7.0](#270)
+- `2.6.x` Releases - [2.6.0](#260) | [2.6.1](#261)
+- `2.5.x` Releases - [2.5.0](#250)
+- `2.4.x` Releases - [2.4.0](#240) | [2.4.1](#241) | [2.4.2](#242)
+- `2.3.x` Releases - [2.3.0](#230) | [2.3.1](#231)
+- `2.2.x` Releases - [2.2.0](#220)
+- `2.1.x` Releases - [2.1.0](#210)
+- `2.0.x` Releases - [2.0.0](#200) | [2.0.1](#201) | [2.0.2](#202) | [2.0.3](#203)
+
+#### 1.x Releases
+
+- `1.3.x` Releases - [1.3.0](#130)
+- `1.2.x` Releases - [1.2.0](#120) | [1.2.1](#121) | [1.2.2](#122)
+- `1.1.x` Releases - [1.1.0](#110)
+- `1.0.x` Releases - [1.0.0](#100)
+
+#### 0.x Releases
+
+- [0.110.0](#01100), ...
+
+
+<!--
+## Next Release
+-->
+
+
+## 4.2.1
+
+Released August 13, 2019 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v4.2.0...v4.2.1)
+
+**Fixed**
+
+- [#592](https://github.com/groue/GRDB.swift/pull/592): Fix Data interpolation
+
+
+## 4.2.0
+
+Released August 6, 2019 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v4.1.1...v4.2.0)
+
+**New**
+
+- [#570](https://github.com/groue/GRDB.swift/pull/570) by [@chrisballinger](https://github.com/chrisballinger): Allow Swift static library integration via CocoaPods
+- [#576](https://github.com/groue/GRDB.swift/pull/576): Expose table name and full-text filtering methods to DerivableRequest
+- [#586](https://github.com/groue/GRDB.swift/pull/586): Automatic region tracking for ValueObservation
+
+**Fixed**
+
+- [#560](https://github.com/groue/GRDB.swift/pull/560) by [@bellebethcooper](https://github.com/bellebethcooper): Minor typo fix
+- [#562](https://github.com/groue/GRDB.swift/pull/562): Fix crash when using more than one DatabaseCollation
+- [#577](https://github.com/groue/GRDB.swift/pull/577): Rename `aliased(_:)` methods to `forKey(_:)`
+- [#585](https://github.com/groue/GRDB.swift/pull/585): Fix use of SQLite authorizers
+
+**Other**
+
+- [#563](https://github.com/groue/GRDB.swift/pull/563): More tests for eager loading of hasMany associations
+- [#574](https://github.com/groue/GRDB.swift/pull/574): SwiftLint
+
+
+### Documentation Diff
+
+The [ValueObservation](README.md#valueobservation) chapter has been updated so that it fosters the new `ValueObservation.tracking(value:)` method. Other ways to define observations are now described as optimizations.
+
+
+### API Diff
+
+```diff
+-protocol DerivableRequest: FilteredRequest, JoinableRequest, OrderedRequest, SelectionRequest { }
++protocol DerivableRequest: FilteredRequest, JoinableRequest, OrderedRequest, SelectionRequest, TableRequest { }
+
+-extension QueryInterfaceRequest {
+-    func matching(_ pattern: FTS3Pattern?) -> QueryInterfaceRequest<T>
+-}
+-extension QueryInterfaceRequest {
+-    func matching(_ pattern: FTS5Pattern?) -> QueryInterfaceRequest<T>
+-}
++extension TableRequest where Self: FilteredRequest {
++    func matching(_ pattern: FTS3Pattern?) -> Self
++}
++extension TableRequest where Self: FilteredRequest {
++    func matching(_ pattern: FTS5Pattern?) -> Self
++}
+ 
+ protocol Association: DerivableRequest {
+-    associatedtype OriginRowDecoder
++    associatedtype OriginRowDecoder: TableRecord
+ }
+
+-struct BelongsToAssociation<Origin, Destination>: AssociationToOne { }
+-struct HasManyAssociation<Origin, Destination>: AssociationToMany { }
+-struct HasManyThroughAssociation<Origin, Destination>: AssociationToMany { }
+-struct HasOneAssociation<Origin, Destination>: AssociationToOne { }
+-struct HasOneThroughAssociation<Origin, Destination>: AssociationToOne { }
++struct BelongsToAssociation<Origin: TableRecord, Destination: TableRecord>: AssociationToOne { }
++struct HasManyAssociation<Origin: TableRecord, Destination: TableRecord>: AssociationToMany { }
++struct HasManyThroughAssociation<Origin: TableRecord, Destination: TableRecord>: AssociationToMany { }
++struct HasOneAssociation<Origin: TableRecord, Destination: TableRecord>: AssociationToOne { }
++struct HasOneThroughAssociation<Origin: TableRecord, Destination: TableRecord>: AssociationToOne { }
+
+-struct QueryInterfaceRequest<T>: DerivableRequest { }
++struct QueryInterfaceRequest<T>: FilteredRequest, OrderedRequest, SelectionRequest, TableRequuest { }
++extension QueryInterfaceRequest: JoinableRequest where T: TableRecord { }
++extension QueryInterfaceRequest: DerivableRequest where T: TableRecord { }
+
+ extension AssociationAggregate {
++    @available(*, deprecated, renamed: "forKey(_:)")
+     func aliased(_ name: String) -> AssociationAggregate<RowDecoder>
++    func forKey(_ name: String) -> AssociationAggregate<RowDecoder>
+ 
++    @available(*, deprecated, renamed: "forKey(_:)")
+     func aliased(_ key: CodingKey) -> AssociationAggregate<RowDecoder>
++    func forKey(_ key: CodingKey) -> AssociationAggregate<RowDecoder>
+ }
+ 
+ extension SQLSpecificExpressible {
++    @available(*, deprecated, renamed: "forKey(_:)")
+     func aliased(_ name: String) -> SQLSelectable
++    func forKey(_ name: String) -> SQLSelectable
+ 
++    @available(*, deprecated, renamed: "forKey(_:)")
+     func aliased(_ key: CodingKey) -> SQLSelectable
++    func forKey(_ key: CodingKey) -> SQLSelectable
+ }
+ 
+ extension ValueObservation where Reducer == Void {
++    static func tracking<Value>(fetch: @escaping (Database) throws -> Value) -> ValueObservation<ValueReducers.Fetch<Value>>
+ }
+```
+
+
+## 4.1.1
+
+Released June 22, 2019 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v4.1.0...v4.1.1)
+
+This version is identical to 4.1.0.
+
+## 4.1.0
+
+Released June 20, 2019 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v4.0.1...v4.1.0)
+
+- [#537](https://github.com/groue/GRDB.swift/pull/537): Remove useless parenthesis from generated SQL
+- [#538](https://github.com/groue/GRDB.swift/pull/538) by [@Timac](https://github.com/Timac): Add FAQ to clarify "Wrong number of statement arguments" error with "like '%?%'"
+- [#539](https://github.com/groue/GRDB.swift/pull/539): Expose joining methods on both requests and associations
+- [#540](https://github.com/groue/GRDB.swift/pull/540): Update SQLite to 3.28.0 (thanks to [@swiftlyfalling](https://github.com/swiftlyfalling/SQLiteLib))
+- [#542](https://github.com/groue/GRDB.swift/pull/542): Move eager loading of hasMany associations to FetchRequest
+- [#546](https://github.com/groue/GRDB.swift/pull/546) by [@robcas3](https://github.com/robcas3): Fix SPM errors with Xcode 11 beta
+- [#549](https://github.com/groue/GRDB.swift/pull/549) Support for Combine
+- [#550](https://github.com/groue/GRDB.swift/pull/550) Asynchronous Database Access Methods
+- [#555](https://github.com/groue/GRDB.swift/pull/555) Avoid a crash when read-only access can't be established
+
+### Documentation Diff
+
+Good practices evolve: the [Define Record Requests](Documentation/GoodPracticesForDesigningRecordTypes.md#define-record-requests) chapter of the The [Good Practices for Designing Record Types](Documentation/GoodPracticesForDesigningRecordTypes.md) has been rewritten.
+
+The [Examples of Record Definitions](README.md#examples-of-record-definitions) has been extended with a sample record optimized for fetching performance.
+
+The [ValueObservation](README.md#valueobservation) chapter has been updated with new APIs for building observation, and combining observations together in order to avoid data races.
+
+The [ValueObservation Error Handling](README.md#valueobservation-error-handling) chapter explains with more details how to deal with observation errors.
+
+### API Diff
+
+<details>
+    <summary>Asynchronous database access methods</summary>
+
+```diff
+ protocol DatabaseReader {
++    var configuration: Configuration { get }
++
++    #if compiler(>=5.0)
++    func asyncRead(_ block: @escaping (Result<Database, Error>) -> Void)
++    #endif
+ }
+ 
+ protocol DatabaseWriter {
++    func asyncWriteWithoutTransaction(_ updates: @escaping (Database) -> Void)
++
++    #if compiler(>=5.0)
++    func asyncWrite<T>(_ updates: @escaping (Database) throws -> T, completion: @escaping (Database, Result<T, Error>) -> Void)
++    #endif
+ }
+```
+
+</details>
+
+<details>
+    <summary>ValueObservation changes</summary>
+
+```diff
++extension FetchRequest {
++    func observationForCount() -> ValueObservation<...>
++}
++extension FetchRequest where RowDecoder: ... {
++    func observationForAll() -> ValueObservation<...>
++    func observationForFirst() -> ValueObservation<...>
++)
++extension TableRecord {
++    static func observationForCount() -> ValueObservation<...>
++    static func observationForAll() -> ValueObservation<...>
++    static func observationForFirst() -> ValueObservation<...>
++}
+ extension ValueObservation where ... {
++    @available(*, deprecated)
+     static func trackingCount<Request: FetchRequest>(_ request: Request) -> ValueObservation<...>
++    @available(*, deprecated)
+     static func trackingAll<Request: FetchRequest>(_ request: Request) -> ValueObservation<...>
++    @available(*, deprecated)
+     static func trackingOne<Request: FetchRequest>(_ request: Request) -> ValueObservation<...>
+ }
+ extension ValueObservation where Reducer: ValueReducer {
+-    func start(in reader: DatabaseReader, onError: ((Error) -> Void)? = nil, onChange: @escaping (Reducer.Value) -> Void) throws -> TransactionObserver
++    func start(in reader: DatabaseReader, onChange: @escaping (Reducer.Value) -> Void) throws -> TransactionObserver
++    func start(in reader: DatabaseReader, onError: @escaping (Error) -> Void, onChange: @escaping (Reducer.Value) -> Void) -> TransactionObserver
++    func combine<..., Combined>(..., transform: @escaping (...) -> Combined) -> ValueObservation<...>
+ }
+ extension ValueObservation where Reducer: ValueReducer, Reducer.Value: Equatable {
++    @available(*, deprecated)
+     func distinctUntilChanged() -> ValueObservation<...>
++    func removeDuplicates() -> ValueObservation<...>
+ }
+```
+
+</details>
+
+<details>
+    <summary>Joining methods on both requests and associations</summary>
+
+```diff
++protocol JoinableRequest {
++    associatedtype RowDecoder
++}
++
++extension JoinableRequest {
++    func including<A: AssociationToMany>(all association: A) -> Self where A.OriginRowDecoder == RowDecoder
++    func including<A: Association>(optional association: A) -> Self where A.OriginRowDecoder == RowDecoder
++    func including<A: Association>(required association: A) -> Self where A.OriginRowDecoder == RowDecoder
++    func joining<A: Association>(optional association: A) -> Self where A.OriginRowDecoder == RowDecoder
++    func joining<A: Association>(required association: A) -> Self where A.OriginRowDecoder == RowDecoder
++}
+
+-protocol DerivableRequest: SelectionRequest, FilteredRequest, OrderedRequest { }
++protocol DerivableRequest: SelectionRequest, FilteredRequest, OrderedRequest, JoinableRequest { }
+```
+
+</details>
+
+<details>
+    <summary>FetchRequest changes</summary>
+
+```diff
++struct PreparedRequest {
++    var statement: SelectStatement
++    var adapter: RowAdapter?
++    init(statement: SelectStatement, adapter: RowAdapter? = nil)
++}
+
+ protocol FetchRequest {
++    // deprecated
+     func prepare(_ db: Database, forSingleResult singleResult: Bool) throws -> (SelectStatement, RowAdapter?)
++    func makePreparedRequest(_ db: Database, forSingleResult singleResult: Bool) throws -> PreparedRequest
+ }
+```
+
+The core FetchRequest preparation method is now `makePreparedRequest(_:forSingleResult:)`. The former core method `prepare(_:forSingleResult:)` will remain a requirement of the FetchRequest protocol until GRDB 5 due to semantic versioning constraints. Both methods are provided with a default implementation which makes each one depend on the other: this creates an infinite loop unless you provide at least one of them. If you have a choice, implement only `makePreparedRequest(_:forSingleResult:)`.
+
+</details>
+
+
+## 4.0.1
+
+Released May 25, 2019 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v4.0.0...v4.0.1)
+
+- [#533](https://github.com/groue/GRDB.swift/pull/533): Fix eager loading of HasManyThrough associations
+- [#534](https://github.com/groue/GRDB.swift/pull/534): Support for CocoaPods 1.7.0
+- [#535](https://github.com/groue/GRDB.swift/pull/535): Update the Good Practices for Designing Record Types
+
+### Documentation Diff
+
+The [Good Practices for Designing Record Types](Documentation/GoodPracticesForDesigningRecordTypes.md) have been enhanced and completed with a whole new section about "database managers".
+
+
+## 4.0.0
+
+Released May 23, 2019 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v3.7.0...v4.0.0)
+
+GRDB 4 is a release focused on **Swift 5**, and **enhancements on associations between record types**.
+
+It comes with new features, but also a few breaking changes. The [GRDB 4 Migration Guide](Documentation/GRDB3MigrationGuide.md) will help you upgrading your applications.
+
+### New
+
+- [#478](https://github.com/groue/GRDB.swift/pull/478): Swift 5: SQL interpolation
+- [#484](https://github.com/groue/GRDB.swift/pull/484): SE-0193 Cross-module inlining and specialization
+- [#486](https://github.com/groue/GRDB.swift/pull/486): Refactor PersistenceError.recordNotFound
+- [#488](https://github.com/groue/GRDB.swift/pull/488): ValueObservation Cleanup
+- [#490](https://github.com/groue/GRDB.swift/pull/490): Indirect Associations
+- [#493](https://github.com/groue/GRDB.swift/pull/493): Bump SQLite to [3.27.2](https://www.sqlite.org/releaselog/3_27_2.html)
+- [#499](https://github.com/groue/GRDB.swift/pull/499): Extract EncodableRecord from MutablePersistableRecord
+- [#502](https://github.com/groue/GRDB.swift/pull/502): Rename Future to DatabaseFuture
+- [#503](https://github.com/groue/GRDB.swift/pull/503): IFNULL support for association aggregates
+- [#508](https://github.com/groue/GRDB.swift/pull/508) by [@michaelkirk-signal](https://github.com/michaelkirk-signal): Allow Database Connection Configuration
+- [#510](https://github.com/groue/GRDB.swift/pull/510) by [@charlesmchen-signal](https://github.com/charlesmchen-signal): Expose DatabaseRegion(table:) initializer
+- [#515](https://github.com/groue/GRDB.swift/pull/515) by [@alextrob](https://github.com/alextrob): Add "LIMIT 1" to `fetchOne` requests
+- [#517](https://github.com/groue/GRDB.swift/pull/517): Support for SQLCipher 4
+- [#525](https://github.com/groue/GRDB.swift/pull/525): Eager Loading of HasMany associations
+
+### Fixed
+
+- [#511](https://github.com/groue/GRDB.swift/pull/511) by [@charlesmchen-signal](https://github.com/charlesmchen-signal): Fix DatabasePool.setupMemoryManagement()
+
+### Breaking Changes
+
+- Swift 4.0 and Swift 4.1 are no longer supported. Minimum Swift version is now Swift 4.2.
+- iOS 8 is no longer supported. Minimum deployment target is now iOS 9.0.
+- Deprecated APIs are no longer available.
+- See the [Migration Guide](Documentation/GRDB3MigrationGuide.md) and the API diff below for other changes.
+
+### Documentation Diff
+
+- [SQL Interpolation](Documentation/SQLInterpolation.md): this new document describes the new SQL interpolation feature.
+- The [Associations Guide](Documentation/AssociationsBasics.md) has been updated:
+    - [Required Protocols](Documentation/AssociationsBasics.md#required-protocols) describes which protocols your record types have to conform to in order to use Associations features.
+    - [The Types of Associations](Documentation/AssociationsBasics.md#the-types-of-associations) introduces the new HasManyThrough and HasOneThrough associations.
+    - [Convention for Database Table Names](Documentation/AssociationsBasics.md#convention-for-database-table-names) describes how GRDB inflects database table names into their singular or plural forms, depending on your usages of associations.
+    - [Joining And Prefetching Associated Records](Documentation/AssociationsBasics.md#joining-and-prefetching-associated-records) describes the new `including(all:)` method.
+    - [Fetching Values from Associations](Documentation/AssociationsBasics.md#fetching-values-from-associations) explains how to decode record types from associated requests, including requests built with the new `including(all:)` method.
+    - [Aggregate Operations](Documentation/AssociationsBasics.md#aggregate-operations) describes all the ways to transform association aggregates with logical, comparison and arithmetic operators.
+
+### API diff
+
+<details>
+    <summary>Associations: indirect associations and eager loading of HasMany associations</summary>
+
+**New AssociationToOne and AssociationToMany protocols**
+
+```diff
++protocol AssociationToOne: Association { }
++protocol AssociationToMany: Association { }
++extension AssociationToMany {
++    var count: AssociationAggregate<OriginRowDecoder> { get }
++    var isEmpty: AssociationAggregate<OriginRowDecoder> { get }
++    func average(_ expression: SQLExpressible) -> AssociationAggregate<OriginRowDecoder>
++    func max(_ expression: SQLExpressible) -> AssociationAggregate<OriginRowDecoder>
++    func min(_ expression: SQLExpressible) -> AssociationAggregate<OriginRowDecoder>
++    func sum(_ expression: SQLExpressible) -> AssociationAggregate<OriginRowDecoder>
++}
+
++extension BelongsToAssociation: AssociationToOne { }
++extension HasManyAssociation: AssociationToMany { }
++extension HasOneAssociation: AssociationToOne { }
+```
+
+**New HasManyThroughAssociation and HasOneThroughAssociation**
+
+```diff
++struct HasManyThroughAssociation<Origin, Destination>: AssociationToMany { }
++extension HasManyThroughAssociation: TableRequest where Destination: TableRecord { }
++struct HasOneThroughAssociation<Origin, Destination>: AssociationToOne { }
++extension HasOneThroughAssociation: TableRequest where Destination: TableRecord { }
+ 
+ extension TableRecord {
++    static func hasMany<Pivot, Target>(_ destination: Target.RowDecoder.Type, through pivot: Pivot, using target: Target, key: String? = nil) -> HasManyThroughAssociation<Self, Target.RowDecoder> where Pivot: Association, Target: Association, Pivot.OriginRowDecoder == Self, Pivot.RowDecoder == Target.OriginRowDecoder
++    static func hasOne<Pivot, Target>(_ destination: Target.RowDecoder.Type, through pivot: Pivot, using target: Target, key: String? = nil) -> HasOneThroughAssociation<Self, Target.RowDecoder> where Pivot: AssociationToOne, Target: AssociationToOne, Pivot.OriginRowDecoder == Self, Pivot.RowDecoder == Target.OriginRowDecoder
+ }
+```
+
+**Eager loading of HasMany associations**
+
+```diff
+ extension TableRecord {
++    static func including<A: AssociationToMany>(all association: A) -> QueryInterfaceRequest<Self> where A.OriginRowDecoder == Self
+ }
+ 
+ extension Association {
++    func including<A: AssociationToMany>(all association: A) -> Self where A.OriginRowDecoder == RowDecoder
+ }
+ 
+ extension QueryInterfaceRequest {
++    func including<A: AssociationToMany>(all association: A) -> QueryInterfaceRequest where A.OriginRowDecoder == RowDecoder
+ }
+```
+
+**Accessing eager loaded rows**
+
+```diff
+ class Row {
++    var prefetchedRows: Row.PrefetchedRowsView { get }
++    subscript<Collection>(_ key: String) -> Collection where Collection: RangeReplaceableCollection, Collection.Element: FetchableRecord { get }
++    subscript<Record: FetchableRecord & Hashable>(_ key: String) -> Set<Record> { get }
+ }
+
+ extension Row {
++    struct PrefetchedRowsView: Equatable {
++       var isEmpty: Bool { get }
++       var keys: Set<String> { get }
++       subscript(_ key: String) -> [Row]? { get }
++    }
+ }
+```
+
+</details>
+
+<details>
+    <summary>SQL Interpolation</summary>
+
+```diff
++extension SQLRequest: ExpressibleByStringInterpolation {
++    init(stringInterpolation sqlInterpolation: SQLInterpolation)
++}
+ 
++struct SQLLiteral: ExpressibleByStringInterpolation {
++    var sql: String { get }
++    var arguments: StatementArguments { get }
++    init(stringInterpolation sqlInterpolation: SQLInterpolation)
++    init(sql: String, arguments: StatementArguments = StatementArguments())
++    func mapSQL(_ transform: (String) throws -> String) rethrows -> SQLLiteral
++    mutating func append(sql: String, arguments: StatementArguments = StatementArguments())
++    mutating func append(literal sqlLiteral: SQLLiteral)
++    static func + (lhs: SQLLiteral, rhs: SQLLiteral) -> SQLLiteral
++    static func += (lhs: inout SQLLiteral, rhs: SQLLiteral)
++}
+
++extension Sequence where Element == SQLLiteral {
++    func joined(separator: String = "") -> SQLLiteral
++}
+
++struct SQLInterpolation: StringInterpolationProtocol {
++    mutating func appendLiteral(_ sql: String)
++    mutating func appendInterpolation(sql: String, arguments: StatementArguments = StatementArguments())
++    mutating func appendInterpolation(literal sqlLiteral: SQLLiteral)
++    mutating func appendInterpolation<T: TableRecord>(_ table: T.Type)
++    mutating func appendInterpolation<T: TableRecord>(tableOf record: T)
++    mutating func appendInterpolation(_ selection: SQLSelectable)
++    mutating func appendInterpolation<T: SQLExpressible>(_ expressible: T?)
++    mutating func appendInterpolation(_ codingKey: CodingKey)
++    mutating func appendInterpolation<S>(_ sequence: S) where S: Sequence, S.Element: SQLExpressible
++    mutating func appendInterpolation(_ ordering: SQLOrderingTerm)
++    mutating func appendInterpolation<T>(_ request: SQLRequest<T>)
++}
+```
+
+</details>
+
+<details>
+    <summary>Raw SQL breaking changes</summary>
+
+```diff
+ class Database {
+-    func makeSelectStatement(_ sql: String) throws -> SelectStatement
+-    func makeUpdateStatement(_ sql: String) throws -> UpdateStatement
++    func makeSelectStatement(sql: String) throws -> SelectStatement
++    func makeUpdateStatement(sql: String) throws -> UpdateStatement
+
+-    func cachedSelectStatement(_ sql: String) throws -> SelectStatement
+-    func cachedUpdateStatement(_ sql: String) throws -> UpdateStatement
++    func cachedSelectStatement(sql: String) throws -> SelectStatement
++    func cachedUpdateStatement(sql: String) throws -> UpdateStatement
+
+-    func execute(_ sql: String, arguments: StatementArguments? = nil) throws
++    func execute(sql: String, arguments: StatementArguments = StatementArguments()) throws
+ }
+ 
+ class Row {
+-    static func fetchCursor(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> RowCursor
+-    static func fetchAll(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> [Row]
+-    static func fetchOne(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> Row?
++    static func fetchCursor(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> RowCursor
++    static func fetchAll(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> [Row]
++    static func fetchOne(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> Row?
+ }
+ 
+ extension FetchableRecord {
+-    static func fetchCursor(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> RecordCursor<Self>
+-    static func fetchAll(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> [Self]
+-    static func fetchOne(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> Self?
++    static func fetchCursor(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> RecordCursor<Self>
++    static func fetchAll(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> [Self]
++    static func fetchOne(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> Self?
+ }
+
+ extension DatabaseValueConvertible {
+-    static func fetchCursor(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> DatabaseValueCursor<Self>
+-    static func fetchAll(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> [Self]
+-    static func fetchOne(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> Self?
++    static func fetchCursor(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> DatabaseValueCursor<Self>
++    static func fetchAll(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> [Self]
++    static func fetchOne(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> Self?
+ }
+ 
+ extension Optional where Wrapped: DatabaseValueConvertible {
+-    static func fetchCursor(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> NullableDatabaseValueCursor<Wrapped>
+-    static func fetchAll(_ db: Database, _ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws -> [Wrapped?]
++    static func fetchCursor(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> NullableDatabaseValueCursor<Wrapped>
++    static func fetchAll(_ db: Database, sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws -> [Wrapped?]
+ }
+ 
+ extension TableRecord {
+-    static func select(sql: String, arguments: StatementArguments? = nil) -> QueryInterfaceRequest<Self>
++    static func select(sql: String, arguments: StatementArguments = StatementArguments()) -> QueryInterfaceRequest<Self>
++    static func select(literal sqlLiteral: SQLLiteral) -> QueryInterfaceRequest<Self>
+-    static func select<RowDecoder>(sql: String, arguments: StatementArguments? = nil, as type: RowDecoder.Type) -> QueryInterfaceRequest<RowDecoder>
++    static func select<RowDecoder>(sql: String, arguments: StatementArguments = StatementArguments(), as type: RowDecoder.Type) -> QueryInterfaceRequest<RowDecoder>
++    static func select<RowDecoder>(literal sqlLiteral: SQLLiteral, as type: RowDecoder.Type) -> QueryInterfaceRequest<RowDecoder>
+-    static func filter(sql: String, arguments: StatementArguments? = nil) -> QueryInterfaceRequest<Self>
++    static func filter(sql: String, arguments: StatementArguments = StatementArguments()) -> QueryInterfaceRequest<Self>
++    static func filter(literal sqlLiteral: SQLLiteral) -> QueryInterfaceRequest<Self>
+-    static func order(sql: String, arguments: StatementArguments? = nil) -> QueryInterfaceRequest<Self>
++    static func order(sql: String, arguments: StatementArguments = StatementArguments()) -> QueryInterfaceRequest<Self>
++    static func order(literal sqlLiteral: SQLLiteral) -> QueryInterfaceRequest<Self>
+ }
+ 
+ final class FetchedRecordsController<Record: FetchableRecord> {
+-    func setRequest(sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil) throws
++    func setRequest(sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil) throws
+ }
+
+ extension SelectionRequest {
+-    func select(sql: String, arguments: StatementArguments? = nil) -> Self
++    func select(sql: String, arguments: StatementArguments = StatementArguments()) -> Self
++    func select(literal sqlLiteral: SQLLiteral) -> Self
+ }
+ 
+ extension FilteredRequest {
+-    func filter(sql: String, arguments: StatementArguments? = nil) -> Self
++    func filter(sql: String, arguments: StatementArguments = StatementArguments()) -> Self
++    func filter(literal sqlLiteral: SQLLiteral) -> Self
+ }
+ 
+ extension AggregatingRequest {
+-    func group(sql: String, arguments: StatementArguments? = nil) -> Self
++    func group(sql: String, arguments: StatementArguments = StatementArguments()) -> Self
++    func group(literal sqlLiteral: SQLLiteral) -> Self
+-    func having(sql: String, arguments: StatementArguments? = nil) -> Self
++    func having(sql: String, arguments: StatementArguments = StatementArguments()) -> Self
++    func having(literal sqlLiteral: SQLLiteral) -> Self
+ }
+ 
+ extension OrderedRequest {
+-    func order(sql: String, arguments: StatementArguments? = nil) -> Self
++    func order(sql: String, arguments: StatementArguments = StatementArguments()) -> Self
++    func order(literal sqlLiteral: SQLLiteral) -> Self
+ }
+
+ struct SQLRequest<T> : FetchRequest {
+-    init(_ sql: String, arguments: StatementArguments? = nil, adapter: RowAdapter? = nil, cached: Bool = false)
++    init(sql: String, arguments: StatementArguments = StatementArguments(), adapter: RowAdapter? = nil, cached: Bool = false)
++    init(literal sqlLiteral: SQLLiteral, adapter: RowAdapter? = nil, cached: Bool = false)
+ }
+
+ struct SQLExpressionLiteral {
+-    init(_ sql: String, arguments: StatementArguments? = nil)
++    init(sql: String, arguments: StatementArguments = StatementArguments())
++    init(literal sqlLiteral: SQLLiteral)
+ }
+```
+
+</details>
+
+<details>
+    <summary>EncodableRecord</summary>
+
+```diff
++protocol EncodableRecord {
++    func encode(to container: inout PersistenceContainer)
++    static var databaseEncodingUserInfo: [CodingUserInfoKey: Any] { get }
++    static func databaseJSONEncoder(for column: String) -> JSONEncoder
++    static var databaseDateEncodingStrategy: DatabaseDateEncodingStrategy { get }
++    static var databaseUUIDEncodingStrategy: DatabaseUUIDEncodingStrategy { get }
++}
++
++extension EncodableRecord where Self: Encodable {
++    func encode(to container: inout PersistenceContainer)
++}
++
++extension EncodableRecord {
++    var databaseDictionary: [String: DatabaseValue] { get }
++    func databaseEquals(_ record: Self) -> Bool
++    func databaseChanges<Record: EncodableRecord>(from record: Record) -> [String: DatabaseValue]
++}
+
+-protocol MutablePersistableRecord: TableRecord { }
++protocol MutablePersistableRecord: EncodableRecord, TableRecord { }
+```
+
+</details>
+
+<details>
+    <summary>ValueObservation breaking changes</summary>
+
+```diff
+ enum ValueScheduling {
+-    case onQueue(DispatchQueue, startImmediately: Bool)
++    case async(onQueue: DispatchQueue, startImmediately: Bool)
+ }
+ 
+ struct ValueObservation<Reducer> {
+-    var extent: Database.TransactionObservationExtent
+-    static func tracking(_ regions: DatabaseRegionConvertible..., reducer: Reducer) -> ValueObservation
+-    static func tracking<Value>(_ regions: DatabaseRegionConvertible..., fetchDistinct fetch: @escaping (Database) throws -> Value) -> ValueObservation<DistinctUntilChangedValueReducer<RawValueReducer<Value>>> where Value: Equatable
+ }
+```
+
+</details>
+
+<details>
+    <summary>Customizing pluralization and singularization</summary>
+
+```diff
++struct Inflections {
++    init()
++    func pluralize(_ string: String) -> String
++    func singularize(_ string: String) -> String
+
+     // Configuration
++    mutating func plural(_ pattern: String, options: NSRegularExpression.Options = [.caseInsensitive], _ template: String)
++    mutating func singular(_ pattern: String, options: NSRegularExpression.Options = [.caseInsensitive], _ template: String)
++    mutating func uncountableWords(_ words: [String])
++    mutating func irregularSuffix(_ singular: String, _ plural: String)
++}
++
++extension Inflections {
++   static var `default`: Inflections { get set }
++}
+```
+
+</details>
+
+<details>
+    <summary>Full Text Search breaking changes: support for SQLite 3.27</summary>
+
+```diff
+ struct FTS3 {
++    enum Diacritics {
++        case keep
++        case removeLegacy
++        #if GRDBCUSTOMSQLITE
++        case remove
++        #endif
++    }
+ }
+ 
+ struct FTS3TokenizerDescriptor {
+-    static func unicode61(removeDiacritics: Bool = true, separators: Set<Character> = [], tokenCharacters: Set<Character> = []) -> FTS3TokenizerDescriptor
++    static func unicode61(diacritics: FTS3.Diacritics = .removeLegacy, separators: Set<Character> = [], tokenCharacters: Set<Character> = []) -> FTS3TokenizerDescriptor
+ }
+ 
+ struct FTS5 {
++    enum Diacritics {
++        case keep
++        case removeLegacy
++        #if GRDBCUSTOMSQLITE
++        case remove
++        #endif
++    }
+ }
+ 
+ struct FTS5TokenizerDescriptor {
+-    static func unicode61(removeDiacritics: Bool = true, separators: Set<Character> = [], tokenCharacters: Set<Character> = []) -> FTS5TokenizerDescriptor
++    static func unicode61(diacritics: FTS5.Diacritics = .removeLegacy, separators: Set<Character> = [], tokenCharacters: Set<Character> = []) -> FTS5TokenizerDescriptor
+ }
+```
+
+</details>
+
+<details>
+    <summary>SQLCipher breaking changes</summary>
+
+```diff
+ struct Configuration {
+-    var cipherPageSize: Int
+-    var kdfIterations: Int
+ }
+```
+
+</details>
+
+<details>
+    <summary>Miscellaneous additions</summary>
+
+**Column initializer from CodingKey**
+
+```diff
+ struct Column {
++    init(_ codingKey: CodingKey)
+ }
+```
+
+**Association aggregates: support for the IFNULL sql operator**
+
+```diff
++func ?? <RowDecoder>(lhs: AssociationAggregate<RowDecoder>, rhs: SQLExpressible) -> AssociationAggregate<RowDecoder>
+```
+
+**Remove all orderings from a request**
+
+```diff
+ protocol OrderedRequest {
++    func unordered()
+ }
+```
+
+**Annotate requests with any value, not only association aggregates**
+
+```diff
+ protocol SelectionRequest {
++    annotated(with selection: [SQLSelectable]) -> Self
+ }
+ 
+ extension SelectionRequest {
++    func annotated(with selection: SQLSelectable...) -> Self
+ }
+ 
+ extension TableRecord {
++    static func annotated(with selection: [SQLSelectable]) -> QueryInterfaceRequest<Self>
++    static func annotated(with selection: SQLSelectable...) -> QueryInterfaceRequest<Self>
+ }
+```
+
+**Build a DatabaseRegion from a table name**
+
+```diff
+ struct DatabaseRegion {
++    init(table: String)
+ }
+```
+
+</details>
+
+<details>
+    <summary>Miscellaneous breaking changes</summary>
+
+```diff
+ enum PersistenceError: Error {
+-    case recordNotFound(MutablePersistableRecord)
++    case recordNotFound(databaseTableName: String, key: [String: DatabaseValue])
+ }
+
+- class Future<Value> { }
++ class DatabaseFuture<Value> { }
+
+ protocol FetchRequest {
+-    func prepare(_ db: Database) throws -> (SelectStatement, RowAdapter?)
++    func prepare(_ db: Database, forSingleResult singleResult: Bool) throws -> (SelectStatement, RowAdapter?)
+ }
+ 
+ struct AnyFetchRequest<T> : FetchRequest {
+-    init(_ prepare: @escaping (Database) throws -> (SelectStatement, RowAdapter?))
++    init(_ prepare: @escaping (Database, _ singleResult: Bool) throws -> (SelectStatement, RowAdapter?))
+ }
+ 
+-final class StatementCursor: Cursor { }
+```
+
+**Discarded deprecated methods**
+
+```diff
+ extension Cursor {
+-    func flatMap<ElementOfResult>(_ transform: @escaping (Element) throws -> ElementOfResult?) -> MapCursor<FilterCursor<MapCursor<Self, ElementOfResult?>>, ElementOfResult>
+ }
+ 
+ struct DatabaseValue {
+-    func losslessConvert<T>(sql: String? = nil, arguments: StatementArguments? = nil) -> T where T : DatabaseValueConvertible
+-    func losslessConvert<T>(sql: String? = nil, arguments: StatementArguments? = nil) -> T? where T : DatabaseValueConvertible
+ }
+ 
+ protocol DatabaseWriter {
+-    func readFromCurrentState(_ block: @escaping (Database) -> Void) throws
+ }
+```
+
+</details>
+
+
+## 3.7.0
+
+Released March 9, 2019 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v3.6.2...v3.7.20)
+
+### Fixed
+
+- [#496](https://github.com/groue/GRDB.swift/pull/496): Fix crash when trying to perform fetchCount or ValueObservation.trackCount on joined query
+
+### New
+
+- [#494](https://github.com/groue/GRDB.swift/pull/494) by [@davidkraus](https://github.com/davidkraus): Document how to enable FTS5 with GRDB.swift CocoaPod
+- [#497](https://github.com/groue/GRDB.swift/pull/497) by [@Marus](https://github.com/Marus): Add additional SQLCipher configuration options
+
+### Documentation Diff
+
+- [Advanced configuration options for SQLCipher](README.md#advanced-configuration-options-for-sqlcipher): this new chapter documents the new database encryption APIs.
+- [Enabling FTS5 Support](README.md#enabling-fts5-support) has been updated with a new technique for enabling FTS5 with the GRDB.swift CocoaPod.
+
+
+## 3.6.2
+
+Released January 5, 2019 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v3.6.1...v3.6.2)
+
+### Fixed
+
+- [#464](https://github.com/groue/GRDB.swift/pull/464): Make updateChanges(_:with:) available to PersistableRecord structs
+
+
+## 3.6.1
+
+Released December 9, 2018 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v3.6.0...v3.6.1)
+
+### Fixed
+
+- [#458](https://github.com/groue/GRDB.swift/pull/458): Fix ValueObservation duration - code & doc
+
+
+## 3.6.0
+
+Released December 7, 2018 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v3.5.0...v3.6.0)
+
+This release comes with:
+
+- A nice sugar for updating records (my personal favorite of this release):
+    
+    ```swift
+    // Does not hit the database if player is not modified
+    try player.update(db) {
+        $0.score = 1000
+        $0.hasAward = true
+    }
+    ```
+    
+- Enhanced [ValueObservation](README.md#valueobservation), with methods such as `compactMap`, `combine`, ...
+
+- Observation of specific transactions, with the new [DatabaseRegionObservation](README.md#databaseregionobservation).
+
+- Various other improvements listed below.
+
+
+### Fixed
+
+- [#449](https://github.com/groue/GRDB.swift/pull/449): Fix JSON encoding of empty containers
+
+
+### New
+
+- [#442](https://github.com/groue/GRDB.swift/pull/442): Reindex
+- [#443](https://github.com/groue/GRDB.swift/pull/443): In place record update
+- [#445](https://github.com/groue/GRDB.swift/pull/445): Quality of service and target dispatch queue
+- [#446](https://github.com/groue/GRDB.swift/pull/446): ValueObservation: delayed reducer creation
+- [#444](https://github.com/groue/GRDB.swift/pull/444): Combine Value Observations
+- [#451](https://github.com/groue/GRDB.swift/pull/451): ValueObservation.compactMap
+- [#452](https://github.com/groue/GRDB.swift/pull/452): ValueObservation.mapReducer
+- [#454](https://github.com/groue/GRDB.swift/pull/454): ValueObservation.distinctUntilChanged
+- [#455](https://github.com/groue/GRDB.swift/pull/455): DatabaseRegionObservation
+- ValueObservation methods which used to accept a variadic list of observed regions now also accept an array.
+- ValueReducer, the protocol that fuels ValueObservation, is flagged [**:fire: EXPERIMENTAL**](README.md#what-are-experimental-features). It will remain so until more experience has been acquired.
+
+
+### Documentation Diff
+
+- [Record Comparison](README.md#record-comparison): this chapter has been updated for the new `updateChanges(_:with:)` method.
+- [ValueObservation](README.md#valueobservation): this chapter has been updated for the new `ValueObservation.combine`, `ValueObservation.compactMap`, and `Value.distinctUntilChanged` methods.
+- [DatabaseRegionObservation](README.md#databaseregionobservation): this chapter describes the new `DatabaseRegionObservation` type.
+
+
+### API diff
+
+```diff
+ extension Database {
++    func reindex(collation: Database.CollationName) throws
++    func reindex(collation: DatabaseCollation) throws
+ }
+ 
+ extension MutablePersistableRecord {
++    mutating func updateChanges(_ db: Database, with change: (inout Self) throws -> Void) throws -> Bool
+ }
+
+ extension PersistableRecord {
++    func updateChanges(_ db: Database, with change: (Self) throws -> Void) throws -> Bool
+ }
+
+ struct ValueObservation<Reducer> {
++    static func tracking(
++        _ regions: [DatabaseRegionConvertible],
++        reducer: @escaping (Database) throws -> Reducer)
++        -> ValueObservation
+ }
+ 
++extension ValueObservation where Reducer == Void {
++    static func tracking<Value>(
++        _ regions: [DatabaseRegionConvertible],
++        fetch: @escaping (Database) throws -> Value)
++        -> ValueObservation<ValueReducers.Raw<Value>>
++    static func combine<R1: ValueReducer, ...>(_ o1: ValueObservation<R1>, ...)
++        -> ValueObservation<...>
++}
+ 
++extension ValueObservation where Reducer: ValueReducer {
++    func compactMap<T>(_ transform: @escaping (Reducer.Value) -> T?)
++        -> ValueObservation<CompactMapValueReducer<Reducer, T>>
++}
+
++ extension ValueObservation where Reducer: ValueReducer, Reducer.Value: Equatable {
++     public func distinctUntilChanged()
++         -> ValueObservation<DistinctUntilChangedValueReducer<Reducer>>
++ }
+
++extension ValueObservation {
++    func mapReducer<R>(_ transform: @escaping (Database, Reducer) throws -> R)
++        -> ValueObservation<R>
++}
+ 
+ struct Configuration {
++    var qos: DispatchQoS
++    var targetQueue: DispatchQueue?
+ }
+ 
++struct DatabaseRegionObservation {
++    var extent: Database.TransactionObservationExtent
++    init(tracking regions: DatabaseRegionConvertible...)
++    init(tracking regions: [DatabaseRegionConvertible])
++    func start(in dbWriter: DatabaseWriter, onChange: @escaping (Database) -> Void) throws -> TransactionObserver
++}
+```
+
+
+## 3.5.0
+
+Released November 2, 2018 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v3.4.0...v3.5.0)
+
+This release comes with **[ValueObservation](README.md#valueobservation)**, a new type which tracks the results of database requests, and notifies fresh values whenever the database changes:
+
+```swift
+let observer = ValueObversation
+    .trackingOne(Player.filter(key: 42))
+    .start(in: dbQueue) { player: Player? in
+        print("Player has changed")
+    }
+```
+
+ValueObservation also aims at providing support for third-party code that needs to react to database changes. For example, [RxSwiftCommunity/RxGRDB#46](https://github.com/RxSwiftCommunity/RxGRDB/pull/46) is the pull request which implements RxGRDB, the companion library based on [RxSwift](https://github.com/ReactiveX/RxSwift), on top of ValueObservation.
+
+
+### New
+
+- [#435](https://github.com/groue/GRDB.swift/pull/435): Improved support for values observation
+- It is now possible to observe database change from a [DatabaseReader](https://groue.github.io/GRDB.swift/docs/3.5/Protocols/DatabaseReader.html).
+
+
+### Breaking Change
+
+It used to be possible to define custom types that adopt the [DatabaseReader and DatabaseWriter protocols](README.md#databasewriter-and-databasereader-protocols), with a major drawback: it was impossible to add concurrency-related APIs to GRDB without breaking user code. Now all types that adopt those protocols are defined by GRDB: DatabaseQueue, DatabasePool, DatabaseSnapshot, AnyDatabaseReader, and AnyDatabaseWriter. **Expanding this set is no longer supported.**
+
+
+### Documentation Diff
+
+- [ValueObservation](README.md#valueobservation): this new chapter describes the new way to observe database values.
+
+
+### API diff
+
+```diff
+ protocol DatabaseReader: class {
++    func add<Reducer: ValueReducer>(
++        observation: ValueObservation<Reducer>,
++        onError: ((Error) -> Void)?,
++        onChange: @escaping (Reducer.Value) -> Void)
++        throws -> TransactionObserver
++    func remove(transactionObserver: TransactionObserver)
+ }
+ 
+ protocol DatabaseWriter: DatabaseReader {
+-    func remove(transactionObserver: TransactionObserver)
+ }
+
++protocol DatabaseRegionConvertible {
++    func databaseRegion(_ db: Database) throws -> DatabaseRegion
++}
++
++extension DatabaseRegion: DatabaseRegionConvertible { }
++
++struct AnyDatabaseRegionConvertible: DatabaseRegionConvertible {
++    init(_ region: @escaping (Database) throws -> DatabaseRegion)
++    init(_ region: DatabaseRegionConvertible)
++}
+
+-protocol FetchRequest { ... }
++protocol FetchRequest: DatabaseRegionConvertible { ... }
+
++enum ValueScheduling {
++    case mainQueue
++    case onQueue(DispatchQueue, startImmediately: Bool)
++    case unsafe(startImmediately: Bool)
++}
+
++protocol ValueReducer {
++    associatedtype Fetched
++    associatedtype Value
++    func fetch(_ db: Database) throws -> Fetched
++    mutating func value(_ fetched: Fetched) -> Value?
++}
++
++extension ValueReducer {
++    func map<T>(_ transform: @escaping (Value) -> T?) -> MapValueReducer<Self, T>
++}
++
++struct AnyValueReducer<Fetched, Value>: ValueReducer {
++    init(fetch: @escaping (Database) throws -> Fetched, value: @escaping (Fetched) -> Value?)
++    init<Reducer: ValueReducer>(_ reducer: Reducer) where Reducer.Fetched == Fetched, Reducer.Value == Value
++}
+
++struct ValueObservation<Reducer> {
++    var extent: Database.TransactionObservationExtent
++    var requiresWriteAccess: Bool
++    var scheduling: ValueScheduling
++    static func tracking(_ regions: DatabaseRegionConvertible..., reducer: Reducer) -> ValueObservation
++}
++
++extension ValueObservation where Reducer: ValueReducer {
++    func map<T>(_ transform: @escaping (Reducer.Value) -> T)
++        -> ValueObservation<MapValueReducer<Reducer, T>>
++    func start(
++        in reader: DatabaseReader,
++        onError: ((Error) -> Void)? = nil,
++        onChange: @escaping (Reducer.Value) -> Void) throws -> TransactionObserver
++}
++
++extension ValueObservation where Reducer == Void {
++    static func tracking<Value>(
++        _ regions: DatabaseRegionConvertible...,
++        fetch: @escaping (Database) throws -> Value)
++        -> ValueObservation<ValueReducers.Raw<Value>>
++
++    static func tracking<Value>(
++        _ regions: DatabaseRegionConvertible...,
++        fetchDistinct: @escaping (Database) throws -> Value)
++        -> ValueObservation<ValueReducers.Distinct<Value>>
++        where Value: Equatable
++
++    static func trackingCount<Request: FetchRequest>(_ request: Request)
++        -> ValueObservation<ValueReducers.Raw<Int>>
++    static func trackingAll<Request: FetchRequest>(_ request: Request)
++        -> ValueObservation<ValueReducers.Raw<[Request.RowDecoder]>>
++    static func trackingOne<Request: FetchRequest>(_ request: Request)
++        -> ValueObservation<ValueReducers.Raw<Request.RowDecoder?>>
++}
+```
+
+
+## 3.4.0
+
+Released October 8, 2018 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v3.3.1...v3.4.0)
+
+This release comes with **Association Aggregates**. They let you compute values out of collections of associated records, such as their count, or the maximum value of an associated record column.
+
+### Fixed
+
+- [#425](https://github.com/groue/GRDB.swift/pull/425): Fix "destination database is in use " error during database backup
+- [#427](https://github.com/groue/GRDB.swift/pull/427): Have cursors reset SQLite statements in deinit
+
+
+### New
+
+- [#422](https://github.com/groue/GRDB.swift/pull/422): Refining Association Requests
+- [#423](https://github.com/groue/GRDB.swift/pull/423): Association Aggregates
+- [#428](https://github.com/groue/GRDB.swift/pull/428): Upgrade custom SQLite builds to version 3.25.2 (thanks to [@swiftlyfalling](https://github.com/swiftlyfalling/SQLiteLib))
+
+
+### Documentation Diff
+
+- [Refining Association Requests](Documentation/AssociationsBasics.md#refining-association-requests): this new chapter describes how you can craft complex associated requests in a modular way.
+- [Association Aggregates](Documentation/AssociationsBasics.md#association-aggregates): this chapter describes the main new feature of this release.
+
+
+
+### API diff
+
+```diff
+ protocol AggregatingRequest {
+-    func group(_ expressions: [SQLExpressible]) -> Self
++    func group(_ expressions: @escaping (Database) throws -> [SQLExpressible]) -> Self
+ }
+
++extension AggregatingRequest {
++    func group(_ expressions: [SQLExpressible]) -> Self
++}
+
++extension TableRequest where Self: AggregatingRequest {
++    func groupByPrimaryKey() -> Self {
++}
+
++struct AssociationAggregate<RowDecoder> {
++    func aliased(_ name: String) -> AssociationAggregate<RowDecoder>
++    func aliased(_ key: CodingKey) -> AssociationAggregate<RowDecoder>
++}
+
++extension HasManyAssociation where Origin: TableRecord, Destination: TableRecord {
++    var count: AssociationAggregate<Origin>
++    var isEmpty: AssociationAggregate<Origin>
++    func average(_ expression: SQLExpressible) -> AssociationAggregate<Origin>
++    func max(_ expression: SQLExpressible) -> AssociationAggregate<Origin>
++    func min(_ expression: SQLExpressible) -> AssociationAggregate<Origin>
++    func sum(_ expression: SQLExpressible) -> AssociationAggregate<Origin>
++}
+
++extension QueryInterfaceRequest {
++    func annotated(with selection: [SQLSelectable]) -> QueryInterfaceRequest<RowDecoder>
++}
+
++extension QueryInterfaceRequest where RowDecoder: TableRecord {
++    func annotated(with aggregates: AssociationAggregate<RowDecoder>...) -> QueryInterfaceRequest<RowDecoder>
++    func annotated(with aggregates: [AssociationAggregate<RowDecoder>]) -> QueryInterfaceRequest<RowDecoder>
++    func having(_ aggregate: AssociationAggregate<RowDecoder>) -> QueryInterfaceRequest<RowDecoder>
++}
+
++extension TableRecord {
++    static func annotated(with aggregates: AssociationAggregate<Self>...) -> QueryInterfaceRequest<Self>
++    static func annotated(with aggregates: [AssociationAggregate<Self>]) -> QueryInterfaceRequest<Self>
++    static func having(_ aggregate: AssociationAggregate<Self>) -> QueryInterfaceRequest<Self>
++}
+
++extension SQLSpecificExpressible {
++    func aliased(_ key: CodingKey) -> SQLSelectable
++}
+```
+
+
+## 3.3.1
+
+Released September 23, 2018 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v3.3.0...v3.3.1)
+
+### Fixed
+
+- [#414](https://github.com/groue/GRDB.swift/pull/414): Fix database pool use of FTS5 tokenizers
+
+### Documentation Diff
+
+- Enhanced visibility of the [Demo Application](DemoApps/GRDBDemoiOS)
+
+
 ## 3.3.0
 
 Released September 16, 2018 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v3.3.0-beta1...v3.3.0)
@@ -1094,7 +2261,7 @@ Released July 19, 2017 &bull; [diff](https://github.com/groue/GRDB.swift/compare
     It used to generate `= NULL` which would not behave as expected. 
     
 
-## 1.2
+## 1.2.0
 
 Released July 13, 2017 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v1.1...v1.2)
 
@@ -1193,7 +2360,7 @@ Released July 13, 2017 &bull; [diff](https://github.com/groue/GRDB.swift/compare
 ```
 
 
-## 1.1
+## 1.1.0
 
 Released July 1, 2017 &bull; [diff](https://github.com/groue/GRDB.swift/compare/v1.0...v1.1)
 
@@ -1255,9 +2422,9 @@ Released July 1, 2017 &bull; [diff](https://github.com/groue/GRDB.swift/compare/
 ```
 
 
-## 1.0 :tada:
+## 1.0.0
 
-Released June 20, 2017
+Released June 20, 2017 :tada:
 
 **GRDB 1.0 comes with enhancements, and API stability.**
 

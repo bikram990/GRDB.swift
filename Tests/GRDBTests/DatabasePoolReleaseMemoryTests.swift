@@ -1,7 +1,5 @@
 import XCTest
-#if GRDBCIPHER
-    @testable import GRDBCipher
-#elseif GRDBCUSTOMSQLITE
+#if GRDBCUSTOMSQLITE
     @testable import GRDBCustomSQLite
 #else
     @testable import GRDB
@@ -34,7 +32,7 @@ class DatabasePoolReleaseMemoryTests: GRDBTestCase {
             let dbPool = try makeDatabasePool()
             // Writer connection
             try dbPool.write { db in
-                try db.execute("CREATE TABLE items (id INTEGER PRIMARY KEY)")
+                try db.execute(sql: "CREATE TABLE items (id INTEGER PRIMARY KEY)")
             }
             // Reader connection
             try dbPool.read { _ in }
@@ -67,9 +65,9 @@ class DatabasePoolReleaseMemoryTests: GRDBTestCase {
         
         let dbPool = try makeDatabasePool()
         try dbPool.write { db in
-            try db.execute("CREATE TABLE items (id INTEGER PRIMARY KEY)")
+            try db.execute(sql: "CREATE TABLE items (id INTEGER PRIMARY KEY)")
             for _ in 0..<2 {
-                try db.execute("INSERT INTO items (id) VALUES (NULL)")
+                try db.execute(sql: "INSERT INTO items (id) VALUES (NULL)")
             }
         }
         
@@ -89,7 +87,7 @@ class DatabasePoolReleaseMemoryTests: GRDBTestCase {
         
         let block1 = { () in
             try! dbPool.read { db in
-                let cursor = try Row.fetchCursor(db, "SELECT * FROM items")
+                let cursor = try Row.fetchCursor(db, sql: "SELECT * FROM items")
                 XCTAssertTrue(try cursor.next() != nil)
                 s1.signal()
                 _ = s2.wait(timeout: .distantFuture)
@@ -101,7 +99,7 @@ class DatabasePoolReleaseMemoryTests: GRDBTestCase {
         let block2 = { () in
             _ = s1.wait(timeout: .distantFuture)
             try! dbPool.read { db in
-                let cursor = try Row.fetchCursor(db, "SELECT * FROM items")
+                let cursor = try Row.fetchCursor(db, sql: "SELECT * FROM items")
                 XCTAssertTrue(try cursor.next() != nil)
                 s2.signal()
                 XCTAssertTrue(try cursor.next() != nil)
@@ -155,7 +153,7 @@ class DatabasePoolReleaseMemoryTests: GRDBTestCase {
         let (block1, block2) = { () -> (() -> (), () -> ()) in
             var dbPool: DatabasePool? = try! self.makeDatabasePool()
             try! dbPool!.write { db in
-                try db.execute("CREATE TABLE items (id INTEGER PRIMARY KEY)")
+                try db.execute(sql: "CREATE TABLE items (id INTEGER PRIMARY KEY)")
             }
             
             let block1 = { () in
@@ -168,7 +166,7 @@ class DatabasePoolReleaseMemoryTests: GRDBTestCase {
                     try! dbPool.read { db in
                         s1.signal()
                         _ = s2.wait(timeout: .distantFuture)
-                        XCTAssertEqual(try Int.fetchOne(db, "SELECT COUNT(*) FROM items"), 0)
+                        XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM items"), 0)
                     }
                 } else {
                     XCTFail("expect non nil dbPool")
@@ -186,39 +184,6 @@ class DatabasePoolReleaseMemoryTests: GRDBTestCase {
         
         // All connections are closed
         XCTAssertEqual(openConnectionCount, 0)
-    }
-    
-    // TODO: this test should be duplicated for all cursor types
-    func testDatabaseCursorRetainSQLiteConnection() throws {
-        let countQueue = DispatchQueue(label: "GRDB")
-        var openConnectionCount = 0
-        
-        dbConfiguration.SQLiteConnectionDidOpen = {
-            countQueue.sync {
-                openConnectionCount += 1
-            }
-        }
-        
-        dbConfiguration.SQLiteConnectionDidClose = {
-            countQueue.sync {
-                openConnectionCount -= 1
-            }
-        }
-        
-        var cursor: FastDatabaseValueCursor<Int>? = nil
-        do {
-            try! makeDatabasePool().write { db in
-                try db.execute("CREATE TABLE items (id INTEGER PRIMARY KEY)")
-                try db.execute("INSERT INTO items (id) VALUES (NULL)")
-                try db.execute("INSERT INTO items (id) VALUES (NULL)")
-                cursor = try Int.fetchCursor(db, "SELECT id FROM items")
-                XCTAssertTrue(try cursor!.next() != nil)
-                XCTAssertEqual(openConnectionCount, 1)
-            }
-        }
-        XCTAssertEqual(openConnectionCount, 0)
-        XCTAssertTrue(try! cursor!.next() != nil)
-        XCTAssertTrue(try! cursor!.next() == nil)
     }
     
     func testStatementDoNotRetainDatabaseConnection() throws {
@@ -244,7 +209,7 @@ class DatabasePoolReleaseMemoryTests: GRDBTestCase {
                     if let dbPool = dbPool {
                         do {
                             try dbPool.write { db in
-                                statement = try db.makeUpdateStatement("CREATE TABLE items (id INTEGER PRIMARY KEY)")
+                                statement = try db.makeUpdateStatement(sql: "CREATE TABLE items (id INTEGER PRIMARY KEY)")
                                 s1.signal()
                             }
                         } catch {

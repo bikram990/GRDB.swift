@@ -1,7 +1,5 @@
 import XCTest
-#if GRDBCIPHER
-    import GRDBCipher
-#elseif GRDBCUSTOMSQLITE
+#if GRDBCUSTOMSQLITE
     import GRDBCustomSQLite
 #else
     import GRDB
@@ -121,7 +119,7 @@ class FTS4RecordTests: GRDBTestCase {
             
             let pattern = try FTS3Pattern(rawPattern: "Herman Melville")
             XCTAssertEqual(try Book.matching(pattern).fetchCount(db), 1)
-            XCTAssertEqual(lastSQLQuery, "SELECT COUNT(*) FROM \"books\" WHERE (\"books\" MATCH 'Herman Melville')")
+            XCTAssertEqual(lastSQLQuery, "SELECT COUNT(*) FROM \"books\" WHERE \"books\" MATCH 'Herman Melville'")
             
             XCTAssertEqual(try Book.fetchCount(db), 1)
             XCTAssertEqual(lastSQLQuery, "SELECT COUNT(*) FROM \"books\"")

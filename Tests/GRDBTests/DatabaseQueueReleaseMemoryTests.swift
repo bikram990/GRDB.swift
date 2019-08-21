@@ -1,7 +1,5 @@
 import XCTest
-#if GRDBCIPHER
-    @testable import GRDBCipher
-#elseif GRDBCUSTOMSQLITE
+#if GRDBCUSTOMSQLITE
     @testable import GRDBCustomSQLite
 #else
     @testable import GRDB
@@ -70,7 +68,7 @@ class DatabaseQueueReleaseMemoryTests: GRDBTestCase {
         let (block1, block2) = { () -> (() -> (), () -> ()) in
             var dbQueue: DatabaseQueue? = try! self.makeDatabaseQueue()
             try! dbQueue!.write { db in
-                try db.execute("CREATE TABLE items (id INTEGER PRIMARY KEY)")
+                try db.execute(sql: "CREATE TABLE items (id INTEGER PRIMARY KEY)")
             }
             
             let block1 = { () in
@@ -83,7 +81,7 @@ class DatabaseQueueReleaseMemoryTests: GRDBTestCase {
                     try! dbQueue.write { db in
                         s1.signal()
                         _ = s2.wait(timeout: .distantFuture)
-                        XCTAssertEqual(try Int.fetchOne(db, "SELECT COUNT(*) FROM items"), 0)
+                        XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM items"), 0)
                     }
                 } else {
                     XCTFail("expect non nil dbQueue")
@@ -101,39 +99,6 @@ class DatabaseQueueReleaseMemoryTests: GRDBTestCase {
         
         // All connections are closed
         XCTAssertEqual(openConnectionCount, 0)
-    }
-
-    // TODO: this test should be duplicated for all cursor types
-    func testDatabaseCursorRetainSQLiteConnection() throws {
-        let countQueue = DispatchQueue(label: "GRDB")
-        var openConnectionCount = 0
-        
-        dbConfiguration.SQLiteConnectionDidOpen = {
-            countQueue.sync {
-                openConnectionCount += 1
-            }
-        }
-        
-        dbConfiguration.SQLiteConnectionDidClose = {
-            countQueue.sync {
-                openConnectionCount -= 1
-            }
-        }
-        
-        var cursor: FastDatabaseValueCursor<Int>? = nil
-        do {
-            try! makeDatabaseQueue().inDatabase { db in
-                try db.execute("CREATE TABLE items (id INTEGER PRIMARY KEY)")
-                try db.execute("INSERT INTO items (id) VALUES (NULL)")
-                try db.execute("INSERT INTO items (id) VALUES (NULL)")
-                cursor = try Int.fetchCursor(db, "SELECT id FROM items")
-                XCTAssertTrue(try cursor!.next() != nil)
-                XCTAssertEqual(openConnectionCount, 1)
-            }
-        }
-        XCTAssertEqual(openConnectionCount, 0)
-        XCTAssertTrue(try! cursor!.next() != nil)
-        XCTAssertTrue(try! cursor!.next() == nil)
     }
     
     func testStatementDoNotRetainDatabaseConnection() throws {
@@ -160,7 +125,7 @@ class DatabaseQueueReleaseMemoryTests: GRDBTestCase {
                     if let dbQueue = dbQueue {
                         do {
                             try dbQueue.write { db in
-                                statement = try db.makeUpdateStatement("CREATE TABLE items (id INTEGER PRIMARY KEY)")
+                                statement = try db.makeUpdateStatement(sql: "CREATE TABLE items (id INTEGER PRIMARY KEY)")
                                 s1.signal()
                             }
                         } catch {

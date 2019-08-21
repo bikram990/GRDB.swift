@@ -1,94 +1,98 @@
 import UIKit
 import GRDB
 
+/// PlayersViewController displays the list of players.
 class PlayersViewController: UITableViewController {
-    enum PlayerOrdering {
+    private enum PlayerOrdering {
         case byName
         case byScore
-        
-        var request: QueryInterfaceRequest<Player> {
-            switch self {
-            case .byName:
-                return Player.order(Player.Columns.name)
-            case .byScore:
-                return Player.order(Player.Columns.score.desc, Player.Columns.name)
-            }
-        }
     }
     
-    var playersController: FetchedRecordsController<Player>!
-    var playerOrdering: PlayerOrdering = .byScore {
+    @IBOutlet private weak var newPlayerButtonItem: UIBarButtonItem!
+    private var playersController: FetchedRecordsController<Player>!
+    private var playerCountObserver: TransactionObserver?
+    private var playerOrdering: PlayerOrdering = .byScore {
         didSet {
-            try! playersController.setRequest(playerOrdering.request)
-            configureNavigationItem()
+            try! playersController.setRequest(playersRequest)
+            configureOrderingBarButtonItem()
         }
     }
-    
-    @IBOutlet weak var newPlayerButtonItem: UIBarButtonItem!
+    private var playersRequest: QueryInterfaceRequest<Player> {
+        switch playerOrdering {
+        case .byName:
+            return Player.orderedByName()
+        case .byScore:
+            return Player.orderedByScore()
+        }
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        configureTableView()
         configureToolbar()
         configureNavigationItem()
+        configureTableView()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isToolbarHidden = false
     }
-}
-
-
-// MARK: - Navigation
-
-extension PlayersViewController : PlayerEditionViewControllerDelegate {
     
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if segue.identifier == "Edit" {
-            let player = playersController.record(at: tableView.indexPathForSelectedRow!)
-            let controller = segue.destination as! PlayerEditionViewController
-            controller.title = player.name
-            controller.player = player
-            controller.delegate = self // See playerEditionControllerDidComplete
-            controller.commitButtonHidden = true
-        }
-        else if segue.identifier == "New" {
-            setEditing(false, animated: true)
-            let navigationController = segue.destination as! UINavigationController
-            let controller = navigationController.viewControllers.first as! PlayerEditionViewController
-            controller.title = "New Player"
-            controller.player = Player(id: nil, name: "", score: 0)
-        }
+    private func configureToolbar() {
+        toolbarItems = [
+            UIBarButtonItem(barButtonSystemItem: .trash, target: self, action: #selector(deletePlayers)),
+            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh)),
+            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            UIBarButtonItem(title: "💣", style: .plain, target: self, action: #selector(stressTest)),
+        ]
     }
     
-    @IBAction func cancelPlayerEdition(_ segue: UIStoryboardSegue) {
-        // Player creation: cancel button was tapped
+    private func configureNavigationItem() {
+        navigationItem.leftBarButtonItems = [editButtonItem, newPlayerButtonItem]
+        configureOrderingBarButtonItem()
+        configureTitle()
     }
     
-    @IBAction func commitPlayerEdition(_ segue: UIStoryboardSegue) {
-        // Player creation: commit button was tapped
-        let controller = segue.source as! PlayerEditionViewController
-        try! dbQueue.write { db in
-            try controller.player.save(db)
+    private func configureOrderingBarButtonItem() {
+        switch playerOrdering {
+        case .byScore:
+            navigationItem.rightBarButtonItem = UIBarButtonItem(
+                title: "Score ⬇︎",
+                style: .plain,
+                target: self, action: #selector(sortByName))
+        case .byName:
+            navigationItem.rightBarButtonItem = UIBarButtonItem(
+                title: "Name ⬆︎",
+                style: .plain,
+                target: self, action: #selector(sortByScore))
         }
     }
     
-    func playerEditionControllerDidComplete(_ controller: PlayerEditionViewController) {
-        // Player edition: user has finished editing the player
-        try! dbQueue.write { db in
-            try controller.player.save(db)
+    private func configureTitle() {
+        // Track changes in the number of players
+        let observation = ValueObservation.tracking { db in
+            try Player.fetchCount(db)
         }
+        playerCountObserver = observation.start(
+            in: dbQueue,
+            onError: { error in
+                fatalError("Unexpected error: \(error)")
+        },
+            onChange: { [unowned self] count in
+                switch count {
+                case 0: self.navigationItem.title = "No Player"
+                case 1: self.navigationItem.title = "1 Player"
+                default: self.navigationItem.title = "\(count) Players"
+                }
+        })
     }
-}
-
-
-// MARK: - UITableViewDataSource
-
-extension PlayersViewController {
+    
     private func configureTableView() {
-        playersController = try! FetchedRecordsController(dbQueue, request: playerOrdering.request)
+        // Track changes in the database players
+        playersController = try! FetchedRecordsController(dbQueue, request: playersRequest)
         
+        // Animate changes in the table view
         playersController.trackChanges(
             willChange: { [unowned self] _ in
                 self.tableView.beginUpdates()
@@ -123,9 +127,47 @@ extension PlayersViewController {
                 self.tableView.endUpdates()
         })
         
+        // Initial fetch
         try! playersController.performFetch()
     }
+}
+
+
+// MARK: - Navigation
+
+extension PlayersViewController {
     
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "Edit" {
+            let player = playersController.record(at: tableView.indexPathForSelectedRow!)
+            let controller = segue.destination as! PlayerEditionViewController
+            controller.title = player.name
+            controller.player = player
+            controller.presentation = .push
+        }
+        else if segue.identifier == "New" {
+            setEditing(false, animated: true)
+            let navigationController = segue.destination as! UINavigationController
+            let controller = navigationController.viewControllers.first as! PlayerEditionViewController
+            controller.title = "New Player"
+            controller.player = Player(id: nil, name: "", score: 0)
+            controller.presentation = .modal
+        }
+    }
+    
+    @IBAction func cancelPlayerEdition(_ segue: UIStoryboardSegue) {
+        // Player creation cancelled
+    }
+    
+    @IBAction func commitPlayerEdition(_ segue: UIStoryboardSegue) {
+        // Player creation committed
+    }
+}
+
+
+// MARK: - UITableViewDataSource
+
+extension PlayersViewController {
     override func numberOfSections(in tableView: UITableView) -> Int {
         return playersController.sections.count
     }
@@ -151,7 +193,7 @@ extension PlayersViewController {
     private func configure(_ cell: UITableViewCell, at indexPath: IndexPath) {
         let player = playersController.record(at: indexPath)
         if player.name.isEmpty {
-            cell.textLabel?.text = "(anonymous)"
+            cell.textLabel?.text = "-"
         } else {
             cell.textLabel?.text = player.name
         }
@@ -163,33 +205,6 @@ extension PlayersViewController {
 // MARK: - Actions
 
 extension PlayersViewController {
-    private func configureNavigationItem() {
-        navigationItem.leftBarButtonItems = [editButtonItem, newPlayerButtonItem]
-        
-        switch playerOrdering {
-        case .byScore:
-            navigationItem.rightBarButtonItem = UIBarButtonItem(
-                title: "Score ⬇︎",
-                style: .plain,
-                target: self, action: #selector(sortByName))
-        case .byName:
-            navigationItem.rightBarButtonItem = UIBarButtonItem(
-                title: "Name ⬆︎",
-                style: .plain,
-                target: self, action: #selector(sortByScore))
-        }
-    }
-    
-    private func configureToolbar() {
-        toolbarItems = [
-            UIBarButtonItem(barButtonSystemItem: .trash, target: self, action: #selector(deletePlayers)),
-            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh)),
-            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            UIBarButtonItem(title: "💣", style: .plain, target: self, action: #selector(stressTest)),
-        ]
-    }
-    
     @IBAction func sortByName() {
         setEditing(false, animated: true)
         playerOrdering = .byName
@@ -231,16 +246,16 @@ extension PlayersViewController {
                 }
             } else {
                 // Insert a player
-                if arc4random_uniform(2) == 0 {
+                if Bool.random() {
                     var player = Player(id: nil, name: Player.randomName(), score: Player.randomScore())
                     try player.insert(db)
                 }
                 // Delete a random player
-                if arc4random_uniform(2) == 0 {
+                if Bool.random() {
                     try Player.order(sql: "RANDOM()").limit(1).deleteAll(db)
                 }
                 // Update some players
-                for var player in try Player.fetchAll(db) where arc4random_uniform(2) == 0 {
+                for var player in try Player.fetchAll(db) where Bool.random() {
                     player.score = Player.randomScore()
                     try player.update(db)
                 }

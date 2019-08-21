@@ -72,10 +72,9 @@ Legend:
 The ideas, in alphabetical order:
 
 - [Associations]
-- [Carthage]
 - [CloudKit]
 - [Concurrency]
-- [Database Observation]
+- [Custom FTS5 Auxiliary Functions]
 - [Date and Time Functions]
 - [Decode NSDecimalNumber from Text Columns]
 - [Documentation]
@@ -86,9 +85,9 @@ The ideas, in alphabetical order:
 - [JSON]
 - [Linux]
 - [More SQL Generation]
+- [Reactive Database Observation]
 - [SQL Console in the Debugger]
 - [SQLCipher in a Shared App Container]
-- [Static Library]
 - [Typed Expressions]
 
 
@@ -96,16 +95,7 @@ The ideas, in alphabetical order:
 
 :bowtie: Public API Challenge :muscle: Hard :fire: Experimental
 
-Associations can be enhanced in several ways. See the "Known Issues" and "Future Directions" chapter of the [Associations Guide](Documentation/AssociationsBasics.md)
-
-
-### Carthage
-
-:question: Unknown Difficulty
-
-[Carthage](https://github.com/Carthage/Carthage) can build GRDB frameworks, but it can also inexplicably fail. This installation method is thus currently **unsupported**, which means that support has to be found directly in the [Carthage repo](https://github.com/Carthage/Carthage/issues), or on [Stack Overflow](http://stackoverflow.com). See [#262](https://github.com/groue/GRDB.swift/pull/262) for more information.
-
-I would be a nice improvement if GRDB Carthage builds were made robust.
+Associations can be enhanced in several ways. See the "Known Issues" chapter of the [Associations Guide](Documentation/AssociationsBasics.md)
 
 
 ### CloudKit
@@ -155,22 +145,17 @@ And this creates improvement opportunities:
 - The introduction of an "ultra-safe" concurrency mode. Maybe something that restricts all database accesses to the main thread, like [FCModel](https://github.com/marcoarment/FCModel). Maybe in a separate companion library.
 
 
-### Database Observation
+### Custom FTS5 Auxiliary Functions
 
-:muscle: Hard
+:question: Unknown Difficulty
 
-[Database Observation](README#database-changes-observation) is currently available in three flavors:
+The SQLite documentation provides [this description](https://www.sqlite.org/fts5.html) of FTS5 auxiliary functions:
 
-- The [TransactionObserver](README.md#transactionobserver-protocol) protocol: versatile, but low-level and challenging in terms of concurrency, especially when used in conjunction with database pools.
+> An application may use FTS5 auxiliary functions to retrieve extra information regarding the matched row. For example, an auxiliary function may be used to retrieve a copy of a column value for a matched row with all instances of the matched term surrounded by html <b></b> tags.
 
-- [FetchedRecordsController]: high-level and easier to use.
+Applications can define their own [custom FTS5 auxiliary functions](https://www.sqlite.org/fts5.html#custom_auxiliary_functions) with SQLite, but GRDB does not yet provide any Swift API for that.
 
-- [RxGRDB]: high-level and easier to use, depends on [RxSwift](https://github.com/ReactiveX/RxSwift).
-
-Suggested contributions are:
-
-- Enhancements to FetchedRecordsController (see below).
-- More choices of reactive engines.
+See issue [#421](https://github.com/groue/GRDB.swift/issues/421) for more information.
 
 
 ### Date and Time Functions
@@ -252,7 +237,7 @@ let stringRequest = Player.select(Column("name"), as: String.self)
 let rowRequest = SQLRequest<Row>("SELECT ...")
 ```
 
-This limitation does not apply to [RxGRDB], the reactive sibling of FetchedRecordsController. It would be nice if FetchedRecordsController would become just as versatile.
+This limitation does not apply to [ValueObservation] and [RxGRDB]. It would be nice if FetchedRecordsController would become just as versatile.
 
 
 ### FetchedRecordsController Support for Sections
@@ -306,6 +291,17 @@ There are several SQLite features that GRDB could natively support:
 - [Windows Functions](https://www.sqlite.org/windowfunctions.html)
 - [More ideas](https://www.sqlite.org/lang.html)
 
+See [issue #575](https://github.com/groue/GRDB.swift/issues/575) for more information and guidance about the implementation of extra table alterations.
+
+
+### Reactive Database Observation
+
+:baby: Starter Task
+
+We already have the [GRDBCombine](http://github.com/groue/GRDBCombine) and [RxGRDB] companion libraries.
+
+More choices of reactive engines would help more developers enjoy GRDB.
+
 
 ### SQL Console in the Debugger
 
@@ -319,13 +315,6 @@ Sometimes one needs, in lldb, a console similar to the [Command Line Shell For S
 :question: Unknown Difficulty
 
 See issue [#302](https://github.com/groue/GRDB.swift/issues/302).
-
-
-### Static Library
-
-:question: Unknown Difficulty :hammer: Tooling
-
-It would be nice to be able to integrate GRDB as a static library.
 
 
 ### Typed Expressions
@@ -364,9 +353,9 @@ Features that blur this focus are non-goals:
 
 [Ask Questions]: #ask-questions
 [Associations]: #associations
-[Carthage]: #carthage
 [CloudKit]: #cloudkit
 [Codable Records]: README.md#codable-records
+[Custom FTS5 Auxiliary Functions]: #custom-fts5-auxiliary-functions
 [Database Observation]: #database-observation
 [Date and Time Functions]: #date-and-time-functions
 [Decode NSDecimalNumber from Text Columns]: #decode-nsdecimalnumber-from-text-columns
@@ -381,11 +370,12 @@ Features that blur this focus are non-goals:
 [JSON]: #json
 [Linux]: #linux
 [More SQL Generation]: #more-sql-generation
+[Reactive Database Observation]: #reactive-database-observation
+[Records: Splitting Database Encoding from Ability to Write in the Database]: #records-splitting-database-encoding-from-ability-to-write-in-the-database
 [Non-Goals]: #non-goals
 [Report Bugs]: #report-bugs
 [RxGRDB]: http://github.com/RxSwiftCommunity/RxGRDB
 [Concurrency]: #concurrency
-[Static Library]: #static-library
 [Sponsoring and Professional Support]: #sponsoring-and-professional-support
 [SQL Console in the Debugger]: #sql-console-in-the-debugger
 [SQLCipher in a Shared App Container]: #sqlcipher-in-a-shared-app-container
@@ -393,3 +383,8 @@ Features that blur this focus are non-goals:
 [Suggest an Enhancement]: #suggest-an-enhancement
 [Suggested Contributions]: #suggested-contributions
 [Typed Expressions]: #typed-expressions
+[persistence methods]: README.md#persistence-methods
+[PersistableRecord]: README.md#persistablerecord-protocol
+[Record Comparison]: README.md#record-comparison
+[Requesting Associated Records]: Documentation/AssociationsBasics.md#requesting-associated-records
+[ValueObservation]: README.md#valueobservation

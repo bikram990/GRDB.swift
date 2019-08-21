@@ -1,8 +1,6 @@
 import Foundation
 import XCTest
-#if GRDBCIPHER
-    import GRDBCipher
-#elseif GRDBCUSTOMSQLITE
+#if GRDBCUSTOMSQLITE
     import GRDBCustomSQLite
 #else
     import GRDB
@@ -477,24 +475,44 @@ extension FetchableRecordDecodableTests {
             try db.create(table: "t1") { t in
                 t.column("nested", .text)
             }
-
-            let nested = NestedStruct(firstName: "Bob", lastName: "Dylan")
-            let value = StructWithNestedType(nested: [nested, nested])
+        }
+        
+        try dbQueue.inTransaction { db in
+            let value = StructWithNestedType(nested: [
+                NestedStruct(firstName: "Bob", lastName: "Dylan"),
+                NestedStruct(firstName: "Bob", lastName: "Dylan")])
             try value.insert(db)
             
-            let parentModel = try StructWithNestedType.fetchAll(db)
+            let parentModel = try StructWithNestedType.fetchOne(db)
             
-            guard let arrayOfNestedModel = parentModel.first?.nested, let firstNestedModelInArray = arrayOfNestedModel.first else {
+            guard let nested = parentModel?.nested else {
                 XCTFail()
-                return
+                return .rollback
             }
             
             // Check there are two models in array
-            XCTAssertTrue(arrayOfNestedModel.count == 2)
+            XCTAssertEqual(nested.count, 2)
             
             // Check the nested model contains the expected values of first and last name
-            XCTAssertEqual(firstNestedModelInArray.firstName, "Bob")
-            XCTAssertEqual(firstNestedModelInArray.lastName, "Dylan")
+            XCTAssertEqual(nested[0].firstName, "Bob")
+            XCTAssertEqual(nested[0].lastName, "Dylan")
+            
+            return .rollback
+        }
+        
+        try dbQueue.inTransaction { db in
+            let value = StructWithNestedType(nested: [])
+            try value.insert(db)
+            
+            let parentModel = try StructWithNestedType.fetchOne(db)
+            
+            guard let nested = parentModel?.nested else {
+                XCTFail()
+                return .rollback
+            }
+            
+            XCTAssertTrue(nested.isEmpty)
+            return .rollback
         }
     }
 
@@ -600,7 +618,7 @@ extension FetchableRecordDecodableTests {
         try dbQueue.read { db in
             
             // ... with an array of detached rows:
-            let array = try Row.fetchAll(db, "SELECT * FROM t1")
+            let array = try Row.fetchAll(db, sql: "SELECT * FROM t1")
             for row in array {
                 let data1: Data? = row["name"]
                 XCTAssertEqual(jsonAsData, data1)
@@ -631,7 +649,7 @@ extension FetchableRecordDecodableTests {
         try dbQueue.read { db in
             
             // ... with an array of detached rows:
-            let array = try Row.fetchAll(db, "SELECT * FROM t1")
+            let array = try Row.fetchAll(db, sql: "SELECT * FROM t1")
             for row in array {
                 let string: String? = row["name"]
                 XCTAssertEqual(jsonAsString, string)
@@ -660,7 +678,7 @@ extension FetchableRecordDecodableTests {
         
         try dbQueue.read { db in
             // Compare cursor of low-level rows:
-            let cursor = try Row.fetchCursor(db, "SELECT * FROM t1")
+            let cursor = try Row.fetchCursor(db, sql: "SELECT * FROM t1")
             while let row = try cursor.next() {
                 let data1: Data? = row["name"]
                 XCTAssertEqual(jsonAsData, data1)
@@ -690,7 +708,7 @@ extension FetchableRecordDecodableTests {
         
         try dbQueue.read { db in
             // Compare cursor of low-level rows:
-            let cursor = try Row.fetchCursor(db, "SELECT * FROM t1")
+            let cursor = try Row.fetchCursor(db, sql: "SELECT * FROM t1")
             while let row = try cursor.next() {
                 let string: String? = row["name"]
                 XCTAssertEqual(jsonAsString, string)
@@ -709,7 +727,7 @@ extension FetchableRecordDecodableTests {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.inDatabase { db in
             let data = "foo".data(using: .utf8)!
-            let record = try Record.fetchOne(db, "SELECT ? AS data, ? AS optionalData, ? AS datas, ? AS optionalDatas", arguments: [
+            let record = try Record.fetchOne(db, sql: "SELECT ? AS data, ? AS optionalData, ? AS datas, ? AS optionalDatas", arguments: [
                 data,
                 data,
                 "[\"Zm9v\"]",
@@ -735,7 +753,7 @@ extension FetchableRecordDecodableTests {
         
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.inDatabase { db in
-            let record = try Record.fetchOne(db, "SELECT ? AS date, ? AS optionalDate, ? AS dates, ? AS optionalDates", arguments: [
+            let record = try Record.fetchOne(db, sql: "SELECT ? AS date, ? AS optionalDate, ? AS dates, ? AS optionalDates", arguments: [
                 "1970-01-01 00:02:08.000",
                 "1970-01-01 00:02:08.000",
                 "[128000]",
@@ -922,7 +940,7 @@ extension FetchableRecordDecodableTests {
             
             let adapter = SuffixRowAdapter(fromIndex: 1).addingScopes(["nestedKeyed": RangeRowAdapter(0..<1)])
             let request = SQLRequest<Void>(
-                "SELECT ? AS name, ? AS nestedSingle, ? AS nestedUnkeyed",
+                sql: "SELECT ? AS name, ? AS nestedSingle, ? AS nestedUnkeyed",
                 arguments: ["foo", "bar", "[\"baz\"]"],
                 adapter: adapter)
             
@@ -958,7 +976,7 @@ extension FetchableRecordDecodableTests {
             }
             
             let request = SQLRequest<Void>(
-                "SELECT ? AS nestedKeyed, ? AS nestedSingle, ? AS nestedUnkeyed",
+                sql: "SELECT ? AS nestedKeyed, ? AS nestedSingle, ? AS nestedUnkeyed",
                 arguments: ["{\"name\":\"foo\"}", "bar", "[\"baz\"]"])
             
             let record = try Record.fetchOne(db, request)!
@@ -994,7 +1012,7 @@ extension FetchableRecordDecodableTests {
             
             let adapter = SuffixRowAdapter(fromIndex: 1).addingScopes(["nestedKeyed": RangeRowAdapter(0..<1)])
             let request = SQLRequest<Void>(
-                "SELECT ? AS name, ? AS nestedSingle, ? AS nestedUnkeyed",
+                sql: "SELECT ? AS name, ? AS nestedSingle, ? AS nestedUnkeyed",
                 arguments: ["foo", "bar", "[\"baz\"]"],
                 adapter: adapter)
             
@@ -1030,7 +1048,7 @@ extension FetchableRecordDecodableTests {
             }
             
             let request = SQLRequest<Void>(
-                "SELECT ? AS nestedKeyed, ? AS nestedSingle, ? AS nestedUnkeyed",
+                sql: "SELECT ? AS nestedKeyed, ? AS nestedSingle, ? AS nestedUnkeyed",
                 arguments: ["{\"name\":\"foo\"}", "bar", "[\"baz\"]"])
             
             let record = try CustomizedRecord.fetchOne(db, request)!
